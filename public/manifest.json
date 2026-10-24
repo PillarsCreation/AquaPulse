@@ -1,0 +1,18 @@
+{
+  "name": "AquaPulse 防汛应急",
+  "short_name": "防汛应急",
+  "description": "洪水安防地理智能系统 - 山洪预警、救援调度、灾情统计",
+  "start_url": "/login",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#005288",
+  "background_color": "#F5F7FA",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

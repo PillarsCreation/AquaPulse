@@ -1,0 +1,126 @@
+app:
+  description: 村民一键 SOS 后，Agent 自主完成「检索预案 → 调用八步模型 → 匹配救援队伍 → 规划最优路线 → 下发任务包」闭环，断网时自动切换到北斗短报文备份链路。
+  icon: 🆘
+  icon_background: '#FFE4E6'
+  mode: agent-chat
+  name: sos-dispatch-agent
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.1.5
+model_config:
+  agent_mode:
+    enabled: true
+    max_iteration: 10
+    strategy: function_call
+    tools:
+      - datasets: []
+        enabled: true
+        id: tool-dataset-retrieval
+        type: dataset-retrieval
+        description: 检索防汛应急预案与历史灾情案例，为转移指令提供规范依据
+      - enabled: true
+        id: tool-flood-model
+        type: api
+        description: 调用八步模型链推演，返回洪峰到达时间、淹没水深、风险等级
+        parameters:
+          village: {type: string, required: true}
+          intensity: {type: number, required: true}
+          cumulative: {type: number, required: true}
+      - enabled: true
+        id: tool-match-team
+        type: api
+        description: 按距离与装备（担架/急救包/救护车）匹配最近可用救援队伍
+        parameters:
+          lng: {type: number, required: true}
+          lat: {type: number, required: true}
+          require: {type: string, required: false}
+      - enabled: true
+        id: tool-plan-route
+        type: api
+        description: 规划最优救援路线，自动规避积水封路等高危路段
+        parameters:
+          origin: {type: string, required: true}
+          destination: {type: string, required: true}
+          avoid: {type: string, required: false}
+      - enabled: true
+        id: tool-dispatch-task
+        type: api
+        description: 向救援队伍下发任务包（坐标/伤情/物资/路线/ETA）
+      - enabled: true
+        id: tool-beidou-send
+        type: api
+        description: 公网中断时经北斗短报文下发精简任务包（限 39 个汉字）
+  annotation_reply:
+    enabled: false
+  chat_prompt_config: {}
+  completion_prompt_config: {}
+  dataset_configs:
+    datasets:
+      docs: []
+    retrieval_model: multiple
+    reranking_model:
+      reranking_model_name: ''
+      reranking_provider_name: ''
+    reranking_mode: reranking_model
+    score_threshold: 0.7
+    top_k: 3
+  dataset_query_variable: ''
+  external_data_tools: []
+  file_upload:
+    image:
+      detail: high
+      enabled: false
+      number_limits: 3
+      transfer_methods:
+        - local_file
+  model:
+    completion_params:
+      frequency_penalty: 0
+      max_tokens: 1500
+      presence_penalty: 0
+      temperature: 0.3
+      top_p: 0.85
+    mode: chat
+    name: qwen-max
+    provider: tongyi
+  more_like_this:
+    enabled: false
+  opening_statement: |
+    我是防汛应急智能派单 Agent。
+
+    收到村民求助后，我会自主完成：
+    1. 检索应急预案，确认处置规范
+    2. 调用八步模型链推演当前险情
+    3. 匹配距离最近、装备匹配的救援队伍
+    4. 规划避开积水封路的最优路线
+    5. 下发任务包（断网时自动切换北斗短报文）
+
+    请提供：求助人姓名、所在位置、伤情与特殊需求、同行人数。
+  prompt_type: simple
+  retriever_resource:
+    enabled: true
+  sensitive_word_avoidance:
+    config_ids: []
+    enabled: false
+    type: ''
+  speech_to_text:
+    enabled: false
+  suggested_questions:
+    - 云岭村3组王建国右腿受伤行动不便，同行4人，请求救援
+    - 云岭村5组物资短缺，需要饮用水和食品
+    - 云岭村1组有一位78岁老人需要转移
+  suggested_questions_after_answer:
+    enabled: false
+  system_parameters:
+    system_parameters: []
+  text_to_speech:
+    enabled: false
+    language: ''
+    voice: ''
+  user_input_form:
+    - paragraph:
+        label: 求助描述
+        max_length: 512
+        required: true
+        variable: sos_text
+  chat_model_config: {}

@@ -1,0 +1,712 @@
+app:
+  description: 八步模型链推演：降雨输入→产汇流→沟道演进→淹没分析→风险评估→分级预警→转移任务→反馈校正。每条预警附带完整可溯源依据，LLM 仅负责文案转译，数值结论全部由 Code 节点确定性产出。
+  icon: 🌊
+  icon_background: '#E0F2FE'
+  mode: workflow
+  name: flood-8step-derivation
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.1.5
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions: []
+      allowed_file_types: []
+      allowed_file_upload_methods: []
+      enabled: false
+      fileUploadConfig:
+        file_size_limit: 15
+        workflow_file_upload_limit: 3
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+          - local_file
+        detail: high
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+      - data:
+          isInIteration: false
+          sourceType: start
+          targetType: code
+        id: n1-n2
+        source: n1
+        sourceHandle: source
+        target: n2
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          sourceType: code
+          targetType: code
+        id: n2-n3
+        source: n2
+        sourceHandle: source
+        target: n3
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          sourceType: code
+          targetType: code
+        id: n3-n4
+        source: n3
+        sourceHandle: source
+        target: n4
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          sourceType: code
+          targetType: code
+        id: n4-n5
+        source: n4
+        sourceHandle: source
+        target: n5
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          sourceType: code
+          targetType: knowledge-retrieval
+        id: n5-n6
+        source: n5
+        sourceHandle: source
+        target: n6
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          sourceType: knowledge-retrieval
+          targetType: llm
+        id: n6-n7
+        source: n6
+        sourceHandle: source
+        target: n7
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          sourceType: code
+          targetType: llm
+        id: n5-n7
+        source: n5
+        sourceHandle: source
+        target: n7
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          sourceType: llm
+          targetType: code
+        id: n7-n8
+        source: n7
+        sourceHandle: source
+        target: n8
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          sourceType: code
+          targetType: end
+        id: n8-n9
+        source: n8
+        sourceHandle: source
+        target: n9
+        targetHandle: target
+        type: custom
+        zIndex: 0
+    nodes:
+      # ---------- ① 降雨输入 ----------
+      - data:
+          desc: 八步模型链 ①。雷达短临预报 + 地面雨量站融合
+          selected: false
+          title: 开始·降雨输入
+          type: start
+          variables:
+            - label: 雨强 mm/h
+              max_length: 48
+              options: []
+              required: true
+              type: number
+              variable: rainfall_intensity
+            - label: 累计雨量 mm
+              max_length: 48
+              options: []
+              required: true
+              type: number
+              variable: cumulative
+            - label: 预报雨量 mm
+              max_length: 48
+              options: []
+              required: true
+              type: number
+              variable: forecast
+            - label: 受影响人口
+              max_length: 48
+              options: []
+              required: true
+              type: number
+              variable: population
+            - label: 地形风险描述
+              max_length: 128
+              options: []
+              required: false
+              type: paragraph
+              variable: terrain_risk
+            - label: 村组名称
+              max_length: 48
+              options: []
+              required: true
+              type: text-input
+              variable: village_name
+        height: 200
+        id: n1
+        position:
+          x: 40
+          y: 240
+        positionAbsolute:
+          x: 40
+          y: 240
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+
+      # ---------- ② 产汇流计算 ----------
+      - data:
+          code: |
+            def main(rainfall_intensity, cumulative, forecast, terrain_risk):
+                # SCS-CN 曲线数法：根据土壤类型、土地利用与前期土壤水分确定径流量
+                cn = 75
+                if '坡度' in terrain_risk or '陡坡' in terrain_risk:
+                    cn = 82
+                if '泥石流' in terrain_risk or '高危' in terrain_risk:
+                    cn = 88
+
+                S = 25400 / cn - 254
+                P = cumulative + forecast
+                runoff_depth = ((P - 0.2 * S) ** 2) / (P + 0.8 * S) if P > 0.2 * S else 0
+
+                # 合理化公式 Qp = C·i·A/3.6（A 取典型小流域 0.5 km²）
+                coeff = runoff_depth / max(P, 1)
+                peak_flow = max(0, round(coeff * rainfall_intensity * 0.5 * 1000 / 3.6))
+
+                slope_factor = 0.7 if '陡坡' in terrain_risk else (0.85 if '坡度' in terrain_risk else 1.0)
+                convergence_time = max(5, round((20 + 100 / max(rainfall_intensity, 1)) * slope_factor))
+                yield_time = round(convergence_time * 0.4)
+
+                return {
+                    'curve_number': cn,
+                    'peak_flow': peak_flow,
+                    'convergence_time': convergence_time,
+                    'yield_time': yield_time,
+                }
+          code_language: python3
+          desc: 八步模型链 ②。SCS-CN 曲线数法估算洪峰流量与汇流时间
+          outputs:
+            curve_number:
+              children: null
+              type: number
+            peak_flow:
+              children: null
+              type: number
+            convergence_time:
+              children: null
+              type: number
+            yield_time:
+              children: null
+              type: number
+          selected: false
+          title: 产汇流计算
+          type: code
+          variables:
+            - value_selector:
+                - n1
+                - rainfall_intensity
+              variable: rainfall_intensity
+            - value_selector:
+                - n1
+                - cumulative
+              variable: cumulative
+            - value_selector:
+                - n1
+                - forecast
+              variable: forecast
+            - value_selector:
+                - n1
+                - terrain_risk
+              variable: terrain_risk
+        height: 54
+        id: n2
+        position:
+          x: 330
+          y: 240
+        positionAbsolute:
+          x: 330
+          y: 240
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+
+      # ---------- ③ 沟道演进 ----------
+      - data:
+          code: |
+            def main(peak_flow, convergence_time, terrain_risk):
+                # 马斯京根法简化：洪峰传播时间与断面水深推演
+                peak_arrival = round(convergence_time * 0.65)
+                peak_velocity = 5.2 if '陡坡' in terrain_risk else 3.8
+                depth_factor = 0.002 if '陡坡' in terrain_risk else 0.0015
+
+                def depth(f):
+                    return round(min(5, round(f * depth_factor * 100) / 100), 2)
+
+                sections = [
+                    {'name': '上游断面（溪源汇合口）', 'depth': depth(peak_flow * 0.6), 'flow': round(peak_flow * 0.6)},
+                    {'name': '中游断面（村组驻地段）', 'depth': depth(peak_flow * 0.85), 'flow': round(peak_flow * 0.85)},
+                    {'name': '下游断面（出沟口）', 'depth': depth(peak_flow), 'flow': peak_flow},
+                ]
+                return {
+                    'peak_arrival': peak_arrival,
+                    'peak_velocity': peak_velocity,
+                    'sections': sections,
+                }
+          code_language: python3
+          desc: 八步模型链 ③。马斯京根法简化模拟洪峰传播
+          outputs:
+            peak_arrival:
+              children: null
+              type: number
+            peak_velocity:
+              children: null
+              type: number
+            sections:
+              children: null
+              type: array[object]
+          selected: false
+          title: 沟道演进
+          type: code
+          variables:
+            - value_selector:
+                - n2
+                - peak_flow
+              variable: peak_flow
+            - value_selector:
+                - n2
+                - convergence_time
+              variable: convergence_time
+            - value_selector:
+                - n1
+                - terrain_risk
+              variable: terrain_risk
+        height: 54
+        id: n3
+        position:
+          x: 620
+          y: 240
+        positionAbsolute:
+          x: 620
+          y: 240
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+
+      # ---------- ④ 淹没分析 ----------
+      - data:
+          code: |
+            def main(peak_velocity, peak_arrival, sections):
+                area = round(peak_velocity * peak_arrival * 0.0008, 2)
+                max_depth = sections[1]['depth']
+                if max_depth > 2:
+                    dist = '深度淹没区（>2m）占35%，中深度（1-2m）占40%，浅淹没（<1m）占25%'
+                elif max_depth > 1:
+                    dist = '深度淹没区（>2m）占15%，中深度（1-2m）占45%，浅淹没（<1m）占40%'
+                else:
+                    dist = '浅淹没区（<1m）占70%，中深度（1-2m）占30%'
+                return {'area': area, 'max_depth': max_depth, 'depth_distribution': dist}
+          code_language: python3
+          desc: 八步模型链 ④。攻克复杂地形下的水深分布计算
+          outputs:
+            area:
+              children: null
+              type: number
+            max_depth:
+              children: null
+              type: number
+            depth_distribution:
+              children: null
+              type: string
+          selected: false
+          title: 淹没分析
+          type: code
+          variables:
+            - value_selector:
+                - n3
+                - peak_velocity
+              variable: peak_velocity
+            - value_selector:
+                - n3
+                - peak_arrival
+              variable: peak_arrival
+            - value_selector:
+                - n3
+                - sections
+              variable: sections
+        height: 54
+        id: n4
+        position:
+          x: 910
+          y: 240
+        positionAbsolute:
+          x: 910
+          y: 240
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+
+      # ---------- ⑤ 风险评估 + ⑥ 分级预警 ----------
+      - data:
+          code: |
+            def main(rainfall_intensity, cumulative, max_depth, area, population, terrain_risk):
+                # 危险性 H：雨强 0.35 + 累计雨量 0.25 + 最大水深
+                hazard = min(100, round(rainfall_intensity * 0.35 + cumulative * 0.25 + max_depth * 12))
+                # 暴露度 E：人口密度 + 淹没面积
+                exposure = min(100, round(min(population * 0.3, 60) + area * 10))
+                # 脆弱性 V：地形风险等级
+                v = 40
+                if '高危' in terrain_risk or '频发' in terrain_risk:
+                    v = 85
+                elif '隐患' in terrain_risk or '多发' in terrain_risk:
+                    v = 70
+                elif '坡度' in terrain_risk or '陡坡' in terrain_risk:
+                    v = 60
+                vulnerability = min(100, v)
+
+                risk_score = round(hazard * 0.4 + exposure * 0.35 + vulnerability * 0.25)
+
+                # 国标四级预警阈值（依据《山洪灾害防治指导意见》）
+                if risk_score >= 75:
+                    level, level_cn = 'red', '红色'
+                elif risk_score >= 55:
+                    level, level_cn = 'orange', '橙色'
+                elif risk_score >= 35:
+                    level, level_cn = 'yellow', '黄色'
+                else:
+                    level, level_cn = 'blue', '蓝色'
+
+                plan_query = f'{level_cn}预警 人员转移 水深{max_depth}米'
+                return {
+                    'hazard': hazard,
+                    'exposure': exposure,
+                    'vulnerability': vulnerability,
+                    'risk_score': risk_score,
+                    'level': level,
+                    'level_cn': level_cn,
+                    'plan_query': plan_query,
+                }
+          code_language: python3
+          desc: 八步模型链 ⑤⑥。H×E×V 综合评判并映射国标四级预警
+          outputs:
+            hazard:
+              children: null
+              type: number
+            exposure:
+              children: null
+              type: number
+            vulnerability:
+              children: null
+              type: number
+            risk_score:
+              children: null
+              type: number
+            level:
+              children: null
+              type: string
+            level_cn:
+              children: null
+              type: string
+            plan_query:
+              children: null
+              type: string
+          selected: false
+          title: 风险评估与分级
+          type: code
+          variables:
+            - value_selector:
+                - n1
+                - rainfall_intensity
+              variable: rainfall_intensity
+            - value_selector:
+                - n1
+                - cumulative
+              variable: cumulative
+            - value_selector:
+                - n4
+                - max_depth
+              variable: max_depth
+            - value_selector:
+                - n4
+                - area
+              variable: area
+            - value_selector:
+                - n1
+                - population
+              variable: population
+            - value_selector:
+                - n1
+                - terrain_risk
+              variable: terrain_risk
+        height: 54
+        id: n5
+        position:
+          x: 1200
+          y: 240
+        positionAbsolute:
+          x: 1200
+          y: 240
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+
+      # ---------- RAG 预案检索 ----------
+      - data:
+          dataset_ids: []
+          desc: 八步模型链 ⑦。从应急预案知识库检索匹配的处置方案，确保指令有规范依据
+          query_variable_selector:
+            - n5
+            - plan_query
+          retrieval_mode: single-route
+          selected: false
+          title: 预案匹配（RAG）
+          type: knowledge-retrieval
+        height: 90
+        id: n6
+        position:
+          x: 1200
+          y: 380
+        positionAbsolute:
+          x: 1200
+          y: 380
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+
+      # ---------- ⑥ LLM 双文案生成 ----------
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          desc: 八步模型链 ⑥。将结构化推演结果转译为村民通俗版与专业溯源版双文案
+          model:
+            completion_params:
+              temperature: 0.2
+              max_tokens: 1200
+            mode: chat
+            name: qwen-max
+            provider: tongyi
+          prompt_template:
+            - id: sys-prompt
+              role: system
+              text: |
+                你是一名防汛预警发布专家，服务于县级防汛抗旱指挥部。
+                你的任务是把结构化的水文推演结果，转译为两份文案。
+
+                【铁律】
+                1. 只使用下方给出的推演数据，严禁编造任何数值。
+                2. 村民版必须让 60 岁以上老人一听就懂，不出现 CN 值、m³/s 等专业术语。
+                3. 村民版必须包含：风险等级、洪峰到达时间、转移路线、安置点、避险原则。
+                4. 专业版必须完整列出八步推演参数，供上级核查。
+                5. 若检索到应急预案片段，指令必须与预案原文一致，不得自行发挥。
+
+                【输出格式】
+                ===村民通俗版===
+                （60 字以内，口语化，含具体路线与安置点）
+
+                ===专业溯源版===
+                （分条列出：一、降雨输入 二、产汇流 三、沟道演进 四、淹没分析 五、风险评估 六、模型版本）
+            - id: usr-prompt
+              role: user
+              text: |
+                【村组】{{#n1.village_name#}}
+                【风险等级】{{#n5.level_cn#}}预警（{{#n5.level#}}，综合风险分 {{#n5.risk_score#}）
+                【降雨】雨强 {{#n1.rainfall_intensity#}}mm/h，累计 {{#n1.cumulative#}}mm，预报 {{#n1.forecast#}}mm
+                【产汇流】CN={{#n2.curve_number#}}，洪峰 {{#n2.peak_flow#}}m³/s，汇流 {{#n2.convergence_time#}}min
+                【沟道演进】洪峰 {{#n3.peak_arrival#}}min 后抵达，流速 {{#n3.peak_velocity#}}m/s
+                【淹没分析】面积 {{#n4.area#}}km²，最大水深 {{#n4.max_depth#}}m，{{#n4.depth_distribution#}}
+                【风险评估】危险性{{#n5.hazard#}} 暴露度{{#n5.exposure#}} 脆弱性{{#n5.vulnerability#}}
+                【受影响人口】{{#n1.population#}} 人
+
+                【检索到的应急预案片段】
+                {{#n6.result#}}
+          selected: false
+          title: LLM 双文案生成
+          type: llm
+          variables: []
+          vision:
+            enabled: false
+        height: 98
+        id: n7
+        position:
+          x: 1500
+          y: 300
+        positionAbsolute:
+          x: 1500
+          y: 300
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+
+      # ---------- ⑦ 转移任务生成 ----------
+      - data:
+          code: |
+            def main(level, population, village_name):
+                if level == 'red':
+                    count = population
+                elif level == 'orange':
+                    count = round(population * 0.7)
+                elif level == 'yellow':
+                    count = round(population * 0.3)
+                else:
+                    count = 0
+                return {
+                    'person_count': count,
+                    'shelter': f'{village_name}安置点',
+                    'responsible': f'{village_name}村组长',
+                    'routes': [
+                        f'沿村道向{village_name}北侧高地撤离（海拔+50m以上）',
+                        f'经沟道东侧山路转移至{village_name}安置点',
+                    ],
+                }
+          code_language: python3
+          desc: 八步模型链 ⑦。自动生成转移人数、安置点、责任人与路线
+          outputs:
+            person_count:
+              children: null
+              type: number
+            shelter:
+              children: null
+              type: string
+            responsible:
+              children: null
+              type: string
+            routes:
+              children: null
+              type: array[string]
+          selected: false
+          title: 转移任务生成
+          type: code
+          variables:
+            - value_selector:
+                - n5
+                - level
+              variable: level
+            - value_selector:
+                - n1
+                - population
+              variable: population
+            - value_selector:
+                - n1
+                - village_name
+              variable: village_name
+        height: 54
+        id: n8
+        position:
+          x: 1790
+          y: 240
+        positionAbsolute:
+          x: 1790
+          y: 240
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+
+      # ---------- ⑧ 结束·反馈校正 ----------
+      - data:
+          desc: 八步模型链 ⑧。输出完整推演结果，附模型版本与精度说明
+          outputs:
+            - value_selector:
+                - n5
+                - level
+              variable: level
+            - value_selector:
+                - n5
+                - risk_score
+              variable: risk_score
+            - value_selector:
+                - n7
+                - text
+              variable: warning_text
+            - value_selector:
+                - n8
+                - person_count
+              variable: person_count
+            - value_selector:
+                - n8
+                - shelter
+              variable: shelter
+            - value_selector:
+                - n8
+                - routes
+              variable: routes
+          selected: false
+          title: 结束·反馈校正
+          type: end
+        height: 90
+        id: n9
+        position:
+          x: 2080
+          y: 240
+        positionAbsolute:
+          x: 2080
+          y: 240
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.55
+  rag_pipeline:
+    enabled: false

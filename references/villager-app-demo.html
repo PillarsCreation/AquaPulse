@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>防汛应急·灾民端</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root {
+  --danger:#D32F2F; --danger-bg:#FFEBEE; --warn:#F57C00; --warn-bg:#FFF3E0;
+  --safe:#2E7D32; --safe-bg:#E8F5E9; --primary:#1565C0; --primary-bg:#E3F2FD;
+  --text:#1A2B40; --text2:#5A6B80; --bg:#F0F2F5; --card:#FFFFFF; --border:#E0E0E0;
+}
+body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; background:#222; color:var(--text); display:flex; justify-content:center; min-height:100vh; }
+.phone { width:390px; height:844px; background:var(--bg); position:relative; overflow:hidden; box-shadow:0 0 40px rgba(0,0,0,.5); }
+.screen { width:100%; height:100%; overflow-y:auto; overflow-x:hidden; position:relative; }
+.screen::-webkit-scrollbar { display:none; }
+
+/* 状态栏 */
+.statusbar { height:44px; background:var(--danger); color:#fff; display:flex; align-items:center; justify-content:space-between; padding:0 20px; font-size:14px; font-weight:600; position:sticky; top:0; z-index:100; }
+.statusbar .time { font-size:15px; }
+.statusbar .icons { display:flex; gap:5px; align-items:center; font-size:12px; }
+
+/* 页面容器 */
+.page { display:none; min-height:calc(100% - 44px); padding-bottom:20px; }
+.page.active { display:block; animation:slideIn .3s ease; }
+@keyframes slideIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+
+/* 顶部红色预警横幅 */
+.alert-banner { background:linear-gradient(135deg,#D32F2F,#B71C1C); color:#fff; padding:16px 20px; }
+.alert-banner .level { display:inline-block; background:rgba(255,255,255,.2); padding:2px 10px; border-radius:4px; font-size:12px; font-weight:700; margin-bottom:8px; }
+.alert-banner h2 { font-size:18px; margin-bottom:4px; }
+.alert-banner p { font-size:13px; opacity:.9; line-height:1.5; }
+.alert-banner .pulse { display:inline-block; width:8px; height:8px; background:#FFC107; border-radius:50%; margin-right:6px; animation:pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(1.3)} }
+
+/* 用户信息卡 */
+.user-card { background:var(--card); margin:12px; border-radius:12px; padding:16px; box-shadow:0 1px 4px rgba(0,0,0,.06); display:flex; align-items:center; gap:12px; }
+.user-card .avatar { width:48px; height:48px; border-radius:50%; background:var(--primary-bg); display:flex; align-items:center; justify-content:center; font-size:22px; }
+.user-card .info h3 { font-size:16px; margin-bottom:2px; }
+.user-card .info p { font-size:12px; color:var(--text2); }
+.user-card .badge { margin-left:auto; background:var(--safe-bg); color:var(--safe); padding:4px 10px; border-radius:12px; font-size:11px; font-weight:600; }
+
+/* 功能模块网格 */
+.section-title { padding:8px 16px; font-size:13px; color:var(--text2); font-weight:600; }
+.grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:0 12px; margin-bottom:8px; }
+.grid-item { background:var(--card); border-radius:12px; padding:14px 4px; text-align:center; cursor:pointer; transition:transform .15s; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+.grid-item:active { transform:scale(.95); }
+.grid-item .icon { font-size:28px; margin-bottom:6px; }
+.grid-item .label { font-size:11px; color:var(--text); line-height:1.3; }
+.grid-item .dot { position:relative; }
+.grid-item .dot::after { content:''; position:absolute; top:-2px; right:8px; width:8px; height:8px; background:var(--danger); border-radius:50%; border:2px solid #fff; }
+
+/* 列表项 */
+.list-card { background:var(--card); margin:0 12px 8px; border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+.list-item { padding:14px 16px; display:flex; align-items:center; gap:12px; cursor:pointer; border-bottom:1px solid var(--border); }
+.list-item:last-child { border-bottom:none; }
+.list-item:active { background:#F5F5F5; }
+.list-item .li-icon { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+.list-item .li-content { flex:1; }
+.list-item .li-title { font-size:14px; font-weight:600; margin-bottom:2px; }
+.list-item .li-desc { font-size:12px; color:var(--text2); }
+.list-item .li-arrow { color:var(--text2); font-size:14px; }
+
+/* 按钮 */
+.btn { display:block; width:calc(100% - 24px); margin:12px; padding:14px; border:none; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer; transition:opacity .15s; }
+.btn:active { opacity:.85; }
+.btn-primary { background:var(--primary); color:#fff; }
+.btn-danger { background:var(--danger); color:#fff; }
+.btn-success { background:var(--safe); color:#fff; }
+.btn-outline { background:transparent; border:2px solid var(--primary); color:var(--primary); }
+
+/* 表单 */
+.form-group { background:var(--card); margin:0 12px 8px; border-radius:12px; padding:16px; }
+.form-label { font-size:13px; color:var(--text2); margin-bottom:8px; display:block; font-weight:600; }
+.form-input, .form-textarea, .form-select { width:100%; padding:12px; border:1px solid var(--border); border-radius:8px; font-size:14px; background:#FAFAFA; }
+.form-textarea { min-height:80px; resize:none; font-family:inherit; }
+.chip-group { display:flex; flex-wrap:wrap; gap:8px; }
+.chip { padding:8px 16px; border:1px solid var(--border); border-radius:20px; font-size:13px; cursor:pointer; background:#FAFAFA; }
+.chip.selected { background:var(--primary); color:#fff; border-color:var(--primary); }
+.chip:active { transform:scale(.95); }
+
+/* 进度追踪 */
+.progress-card { background:var(--card); margin:0 12px 8px; border-radius:12px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+.progress-card .pc-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.progress-card .pc-title { font-size:15px; font-weight:600; }
+.progress-card .pc-status { font-size:12px; padding:2px 8px; border-radius:4px; }
+.timeline { position:relative; padding-left:24px; }
+.timeline::before { content:''; position:absolute; left:7px; top:8px; bottom:8px; width:2px; background:var(--border); }
+.timeline-item { position:relative; padding-bottom:16px; }
+.timeline-item:last-child { padding-bottom:0; }
+.timeline-item::before { content:''; position:absolute; left:-21px; top:4px; width:12px; height:12px; border-radius:50%; background:var(--border); border:2px solid #fff; }
+.timeline-item.done::before { background:var(--safe); }
+.timeline-item.active::before { background:var(--primary); box-shadow:0 0 0 4px var(--primary-bg); }
+.timeline-item .ti-time { font-size:11px; color:var(--text2); }
+.timeline-item .ti-title { font-size:13px; font-weight:600; margin:2px 0; }
+.timeline-item .ti-desc { font-size:12px; color:var(--text2); }
+
+/* 应急电话 */
+.phone-card { background:var(--card); margin:0 12px 8px; border-radius:12px; padding:16px; display:flex; align-items:center; gap:14px; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+.phone-card:active { background:#F5F5F5; }
+.phone-card .pc-icon { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; }
+.phone-card .pc-info { flex:1; }
+.phone-card .pc-name { font-size:15px; font-weight:600; }
+.phone-card .pc-number { font-size:13px; color:var(--primary); }
+.phone-card .pc-call { width:40px; height:40px; border-radius:50%; background:var(--safe); color:#fff; display:flex; align-items:center; justify-content:center; font-size:18px; }
+
+/* 知识卡片 */
+.knowledge-card { background:linear-gradient(135deg,#1565C0,#0D47A1); color:#fff; margin:0 12px 8px; border-radius:12px; padding:16px; cursor:pointer; }
+.knowledge-card h4 { font-size:14px; margin-bottom:6px; }
+.knowledge-card p { font-size:12px; opacity:.9; line-height:1.5; }
+
+/* 底部导航 */
+.tabbar { position:absolute; bottom:0; left:0; right:0; height:60px; background:var(--card); border-top:1px solid var(--border); display:flex; z-index:100; }
+.tabbar-item { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; cursor:pointer; color:var(--text2); }
+.tabbar-item.active { color:var(--primary); }
+.tabbar-item .ti-icon { font-size:20px; }
+.tabbar-item .ti-label { font-size:10px; }
+
+/* 弹窗 */
+.modal-overlay { display:none; position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.5); z-index:200; justify-content:center; align-items:center; }
+.modal-overlay.show { display:flex; }
+.modal { background:#fff; width:300px; border-radius:16px; padding:24px; text-align:center; animation:modalIn .3s; }
+@keyframes modalIn { from{opacity:0;transform:scale(.8)} to{opacity:1;transform:scale(1)} }
+.modal .m-icon { font-size:48px; margin-bottom:12px; }
+.modal h3 { font-size:18px; margin-bottom:8px; }
+.modal p { font-size:14px; color:var(--text2); margin-bottom:20px; line-height:1.5; }
+.modal .m-btn { padding:10px 24px; border:none; border-radius:8px; font-size:15px; font-weight:600; cursor:pointer; }
+
+/* 页面标题栏 */
+.page-header { background:var(--primary); color:#fff; padding:12px 16px; display:flex; align-items:center; gap:12px; position:sticky; top:44px; z-index:99; }
+.page-header .back { font-size:20px; cursor:pointer; padding:4px; }
+.page-header .title { font-size:17px; font-weight:600; }
+
+/* 统计卡 */
+.stat-row { display:flex; gap:8px; padding:0 12px; margin-bottom:8px; }
+.stat-card { flex:1; background:var(--card); border-radius:10px; padding:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+.stat-card .sc-num { font-size:22px; font-weight:700; }
+.stat-card .sc-label { font-size:11px; color:var(--text2); margin-top:2px; }
+</style>
+</head>
+<body>
+<div class="phone">
+<div class="screen">
+
+<!-- 状态栏 -->
+<div class="statusbar">
+  <span class="time">9:41</span>
+  <span style="font-size:13px">防汛应急·灾民端</span>
+  <span class="icons">📶 🔋</span>
+</div>
+
+<!-- ========== 首页 ========== -->
+<div class="page active" id="page-home">
+  <div class="alert-banner">
+    <span class="level">🔴 I级应急响应</span>
+    <h2><span class="pulse"></span>云岭村山洪红色预警</h2>
+    <p>预计未来2小时累计降雨量达85mm，存在山洪灾害风险，请立即转移至安全区域！</p>
+  </div>
+
+  <div class="user-card">
+    <div class="avatar">👤</div>
+    <div class="info">
+      <h3>王建国</h3>
+      <p>云岭村3组 · 距安置点2.1km</p>
+    </div>
+    <div class="badge">已登记</div>
+  </div>
+
+  <div class="section-title">应急功能</div>
+  <div class="grid">
+    <div class="grid-item dot" onclick="go('page-shelter')">
+      <div class="icon">🏠</div><div class="label">安置点登记</div>
+    </div>
+    <div class="grid-item dot" onclick="go('page-report')">
+      <div class="icon">📋</div><div class="label">伤情/物资上报</div>
+    </div>
+    <div class="grid-item" onclick="go('page-track')">
+      <div class="icon">📍</div><div class="label">救援追踪</div>
+    </div>
+    <div class="grid-item" onclick="go('page-call')">
+      <div class="icon">📞</div><div class="label">应急电话</div>
+    </div>
+    <div class="grid-item" onclick="showModal('该功能需连接智能体后端，演示版暂未开放')">
+      <div class="icon">🗺️</div><div class="label">转移路线</div>
+    </div>
+    <div class="grid-item" onclick="go('page-knowledge')">
+      <div class="icon">📚</div><div class="label">避险知识</div>
+    </div>
+    <div class="grid-item" onclick="go('page-family')">
+      <div class="icon">👨‍👩‍👧</div><div class="label">家人报平安</div>
+    </div>
+    <div class="grid-item" onclick="showModal('SOS已发送！救援队将优先响应您的求助')">
+      <div class="icon">🆘</div><div class="label">一键SOS</div>
+    </div>
+  </div>
+
+  <div class="section-title">最新通知</div>
+  <div class="list-card">
+    <div class="list-item" onclick="showModal('通知详情：云岭村3组全体村民请注意，因持续强降雨，请于10:30前携带贵重物品，沿村口主干道向东步行至云岭镇中心小学安置点。')">
+      <div class="li-icon" style="background:var(--danger-bg)">⚠️</div>
+      <div class="li-content">
+        <div class="li-title">紧急转移通知</div>
+        <div class="li-desc">请于10:30前转移至云岭镇中心小学安置点</div>
+      </div>
+      <div class="li-arrow">›</div>
+    </div>
+    <div class="list-item" onclick="showModal('救援队已出发，预计15分钟到达村口集合点，请保持手机畅通。')">
+      <div class="li-icon" style="background:var(--primary-bg)">🚑</div>
+      <div class="li-content">
+        <div class="li-title">救援队已出发</div>
+        <div class="li-desc">预计15分钟后到达 · 队长：李志强</div>
+      </div>
+      <div class="li-arrow">›</div>
+    </div>
+    <div class="list-item" onclick="showModal('物资发放通知：安置点已备足饮用水、方便食品、毛毯、常用药品，到达后凭登记码领取。')">
+      <div class="li-icon" style="background:var(--safe-bg)">📦</div>
+      <div class="li-content">
+        <div class="li-title">物资发放通知</div>
+        <div class="li-desc">安置点已备足饮用水、食品、毛毯</div>
+      </div>
+      <div class="li-arrow">›</div>
+    </div>
+  </div>
+
+  <div class="knowledge-card" onclick="go('page-knowledge')">
+    <h4>📖 山洪避险口诀</h4>
+    <p>山洪来、快转移；沿两侧、向高处；莫贪财、保性命；听指挥、不乱跑...</p>
+  </div>
+</div>
+
+<!-- ========== 安置点登记页 ========== -->
+<div class="page" id="page-shelter">
+  <div class="page-header">
+    <span class="back" onclick="go('page-home')">‹</span>
+    <span class="title">安置点登记</span>
+  </div>
+
+  <div class="stat-row" style="margin-top:12px">
+    <div class="stat-card"><div class="sc-num" style="color:var(--safe)">3</div><div class="sc-label">附近安置点</div></div>
+    <div class="stat-card"><div class="sc-num" style="color:var(--primary)">248</div><div class="sc-label">已安置人数</div></div>
+    <div class="stat-card"><div class="sc-num" style="color:var(--warn)">52</div><div class="sc-label">剩余容量</div></div>
+  </div>
+
+  <div class="section-title">推荐安置点</div>
+  <div class="list-card">
+    <div class="list-item" onclick="go('page-shelter-detail')">
+      <div class="li-icon" style="background:var(--safe-bg)">🏫</div>
+      <div class="li-content">
+        <div class="li-title">云岭镇中心小学 <span style="font-size:11px;background:var(--safe-bg);color:var(--safe);padding:1px 6px;border-radius:4px;margin-left:4px">推荐</span></div>
+        <div class="li-desc">距您2.1km · 步行约25分钟 · 容量300人</div>
+      </div>
+      <div class="li-arrow">›</div>
+    </div>
+    <div class="list-item" onclick="showModal('该安置点距您较远，建议选择推荐安置点')">
+      <div class="li-icon" style="background:var(--primary-bg)">🏟️</div>
+      <div class="li-content">
+        <div class="li-title">云岭镇体育馆</div>
+        <div class="li-desc">距您3.8km · 容量500人 · 已安置312人</div>
+      </div>
+      <div class="li-arrow">›</div>
+    </div>
+    <div class="list-item" onclick="showModal('该安置点距您较远，建议选择推荐安置点')">
+      <div class="li-icon" style="background:var(--warn-bg)">🏠</div>
+      <div class="li-content">
+        <div class="li-title">云岭镇政府礼堂</div>
+        <div class="li-desc">距您4.5km · 容量150人 · 已安置98人</div>
+      </div>
+      <div class="li-arrow">›</div>
+    </div>
+  </div>
+
+  <div class="section-title">登记信息</div>
+  <div class="form-group">
+    <label class="form-label">姓名</label>
+    <input class="form-input" value="王建国" readonly>
+  </div>
+  <div class="form-group">
+    <label class="form-label">身份证号</label>
+    <input class="form-input" value="420***********1234" readonly>
+  </div>
+  <div class="form-group">
+    <label class="form-label">同行人数</label>
+    <input class="form-input" type="number" value="4" readonly>
+  </div>
+  <div class="form-group">
+    <label class="form-label">特殊需求（可多选）</label>
+    <div class="chip-group">
+      <div class="chip selected">老人</div>
+      <div class="chip">儿童</div>
+      <div class="chip selected">行动不便</div>
+      <div class="chip">慢性病用药</div>
+      <div class="chip">孕妇</div>
+      <div class="chip">无</div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="showModal('登记成功！您的登记码为：YL-2026-0427。请凭此码前往云岭镇中心小学安置点报到。','登记成功')">提交登记</button>
+</div>
+
+<!-- ========== 安置点详情页 ========== -->
+<div class="page" id="page-shelter-detail">
+  <div class="page-header">
+    <span class="back" onclick="go('page-shelter')">‹</span>
+    <span class="title">安置点详情</span>
+  </div>
+
+  <div style="background:linear-gradient(135deg,#1565C0,#0D47A1);color:#fff;padding:20px;margin:12px;border-radius:12px">
+    <h2 style="font-size:20px;margin-bottom:8px">🏫 云岭镇中心小学</h2>
+    <p style="font-size:13px;opacity:.9;margin-bottom:12px">云岭镇云岭大道18号</p>
+    <div style="display:flex;gap:16px;font-size:12px">
+      <span>📍 距您2.1km</span>
+      <span>🚶 步行25分钟</span>
+      <span>🚗 车程8分钟</span>
+    </div>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-card"><div class="sc-num" style="color:var(--safe)">248</div><div class="sc-label">已安置</div></div>
+    <div class="stat-card"><div class="sc-num" style="color:var(--primary)">300</div><div class="sc-label">总容量</div></div>
+    <div class="stat-card"><div class="sc-num" style="color:var(--warn)">52</div><div class="sc-label">剩余</div></div>
+  </div>
+
+  <div class="section-title">物资储备</div>
+  <div class="list-card">
+    <div class="list-item"><div class="li-icon" style="background:var(--primary-bg)">💧</div><div class="li-content"><div class="li-title">饮用水</div><div class="li-desc">1200瓶 · 充足</div></div><div style="color:var(--safe);font-size:12px">充足</div></div>
+    <div class="list-item"><div class="li-icon" style="background:var(--safe-bg)">🍞</div><div class="li-content"><div class="li-title">方便食品</div><div class="li-desc">800份 · 充足</div></div><div style="color:var(--safe);font-size:12px">充足</div></div>
+    <div class="list-item"><div class="li-icon" style="background:var(--warn-bg)">🛏️</div><div class="li-content"><div class="li-title">毛毯/折叠床</div><div class="li-desc">260套 · 紧张</div></div><div style="color:var(--warn);font-size:12px">紧张</div></div>
+    <div class="list-item"><div class="li-icon" style="background:var(--danger-bg)">💊</div><div class="li-content"><div class="li-title">常用药品</div><div class="li-desc">急救包15个 · 紧缺</div></div><div style="color:var(--danger);font-size:12px">紧缺</div></div>
+  </div>
+
+  <div class="section-title">设施服务</div>
+  <div class="list-card">
+    <div class="list-item"><div class="li-icon">🚻</div><div class="li-content"><div class="li-title">卫生间</div><div class="li-desc">男女各4间</div></div></div>
+    <div class="list-item"><div class="li-icon">🏥</div><div class="li-content"><div class="li-title">医疗点</div><div class="li-desc">配备1名医生2名护士</div></div></div>
+    <div class="list-item"><div class="li-icon">📶</div><div class="li-content"><div class="li-title">充电点</div><div class="li-desc">20个充电位</div></div></div>
+    <div class="list-item"><div class="li-icon">🍲</div><div class="li-content"><div class="li-title">热餐供应</div><div class="li-desc">每日3餐 · 11:00/17:00/19:00</div></div></div>
+  </div>
+
+  <button class="btn btn-primary" onclick="go('page-shelter')">前往登记</button>
+</div>
+
+<!-- ========== 伤情/物资上报页 ========== -->
+<div class="page" id="page-report">
+  <div class="page-header">
+    <span class="back" onclick="go('page-home')">‹</span>
+    <span class="title">伤情/物资上报</span>
+  </div>
+
+  <div class="form-group" style="margin-top:12px">
+    <label class="form-label">上报类型</label>
+    <div class="chip-group">
+      <div class="chip selected" onclick="selectChip(this)">伤情上报</div>
+      <div class="chip" onclick="selectChip(this)">物资需求</div>
+      <div class="chip" onclick="selectChip(this)">灾情损失</div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">伤情等级</label>
+    <div class="chip-group">
+      <div class="chip" onclick="selectChip(this)" style="border-color:var(--danger);color:var(--danger)">🔴 重伤</div>
+      <div class="chip selected" onclick="selectChip(this)" style="border-color:var(--warn);color:var(--warn);background:var(--warn-bg)">🟡 中伤</div>
+      <div class="chip" onclick="selectChip(this)" style="border-color:var(--safe);color:var(--safe)">🟢 轻伤</div>
+      <div class="chip" onclick="selectChip(this)">无伤</div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">伤者信息</label>
+    <input class="form-input" value="王建国（本人）" style="margin-bottom:8px">
+    <input class="form-input" placeholder="伤者姓名（如非本人）">
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">伤情描述</label>
+    <textarea class="form-textarea" placeholder="请描述伤情...">右腿被落石擦伤，可见明显伤口，出血已止住，行动不便，需要担架协助转移。</textarea>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">急需物资（可多选）</label>
+    <div class="chip-group">
+      <div class="chip selected" onclick="selectChip(this)">急救包</div>
+      <div class="chip" onclick="selectChip(this)">饮用水</div>
+      <div class="chip selected" onclick="selectChip(this)">担架</div>
+      <div class="chip" onclick="selectChip(this)">食品</div>
+      <div class="chip" onclick="selectChip(this)">毛毯</div>
+      <div class="chip" onclick="selectChip(this)">药品</div>
+      <div class="chip" onclick="selectChip(this)">手电筒</div>
+      <div class="chip" onclick="selectChip(this)">雨具</div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">当前位置</label>
+    <input class="form-input" value="云岭村3组·王建国家（自动定位）" readonly>
+    <div style="font-size:12px;color:var(--text2);margin-top:6px">📍 经度114.32° 纬度30.58° · 定位精度±15m</div>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">灾情损失确认</label>
+    <div class="chip-group">
+      <div class="chip" onclick="selectChip(this)">房屋受损</div>
+      <div class="chip selected" onclick="selectChip(this)">农田被淹</div>
+      <div class="chip" onclick="selectChip(this)">牲畜损失</div>
+      <div class="chip" onclick="selectChip(this)">道路中断</div>
+      <div class="chip" onclick="selectChip(this)">无损失</div>
+    </div>
+  </div>
+
+  <button class="btn btn-danger" onclick="showModal('上报成功！智能体已接收您的求助信息，救援队将优先处理重伤员。预计响应时间：15分钟内。','上报成功')">立即上报</button>
+</div>
+
+<!-- ========== 救援追踪页 ========== -->
+<div class="page" id="page-track">
+  <div class="page-header">
+    <span class="back" onclick="go('page-home')">‹</span>
+    <span class="title">救援进度追踪</span>
+  </div>
+
+  <div style="background:linear-gradient(135deg,#2E7D32,#1B5E20);color:#fff;padding:20px;margin:12px;border-radius:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h2 style="font-size:18px">救援队正在前往</h2>
+      <span style="background:rgba(255,255,255,.2);padding:4px 10px;border-radius:12px;font-size:12px">预计12分钟</span>
+    </div>
+    <p style="font-size:13px;opacity:.9">救援队编号：YJ-2026-0312 · 队长：李志强</p>
+    <div style="margin-top:12px;background:rgba(255,255,255,.15);height:6px;border-radius:3px;overflow:hidden">
+      <div style="width:60%;height:100%;background:#FFC107;border-radius:3px"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;margin-top:6px;opacity:.8">
+      <span>已出发</span><span>行进中</span><span>到达</span>
+    </div>
+  </div>
+
+  <div class="section-title">救援时间线</div>
+  <div class="progress-card">
+    <div class="timeline">
+      <div class="timeline-item done">
+        <div class="ti-time">09:15</div>
+        <div class="ti-title">智能体接收求助</div>
+        <div class="ti-desc">系统自动生成救援任务并派发</div>
+      </div>
+      <div class="timeline-item done">
+        <div class="ti-time">09:18</div>
+        <div class="ti-title">救援队接单</div>
+        <div class="ti-desc">李志强队长确认任务，开始集结</div>
+      </div>
+      <div class="timeline-item done">
+        <div class="ti-time">09:25</div>
+        <div class="ti-title">救援队出发</div>
+        <div class="ti-desc">5人救援队+1辆救护车+1辆物资车</div>
+      </div>
+      <div class="timeline-item active">
+        <div class="ti-time">09:32（当前）</div>
+        <div class="ti-title">行进中</div>
+        <div class="ti-desc">距您2.1km · 预计12分钟后到达</div>
+      </div>
+      <div class="timeline-item">
+        <div class="ti-time">预计 09:44</div>
+        <div class="ti-title">到达集合点</div>
+        <div class="ti-desc">云岭村3组村口</div>
+      </div>
+      <div class="timeline-item">
+        <div class="ti-time">预计 10:00</div>
+        <div class="ti-title">完成转移</div>
+        <div class="ti-desc">转移至云岭镇中心小学安置点</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">救援队信息</div>
+  <div class="list-card">
+    <div class="list-item">
+      <div class="li-icon" style="background:var(--primary-bg)">👨</div>
+      <div class="li-content"><div class="li-title">李志强（队长）</div><div class="li-desc">应急管理局 · 联系电话可拨打</div></div>
+      <div class="li-arrow" onclick="showModal('正在呼叫李志强队长...')">📞</div>
+    </div>
+    <div class="list-item">
+      <div class="li-icon" style="background:var(--safe-bg)">🚑</div>
+      <div class="li-content"><div class="li-title">救护车 鄂A·E2026</div><div class="li-desc">配备担架2副、急救包3个</div></div>
+      <div class="li-arrow">›</div>
+    </div>
+    <div class="list-item">
+      <div class="li-icon" style="background:var(--warn-bg)">📦</div>
+      <div class="li-content"><div class="li-title">物资车 鄂A·E2027</div><div class="li-desc">饮用水50箱、食品30箱、毛毯40条</div></div>
+      <div class="li-arrow">›</div>
+    </div>
+  </div>
+
+  <button class="btn btn-outline" onclick="showModal('已向救援队发送消息：请加快速度，伤者情况稳定。')">发送消息</button>
+</div>
+
+<!-- ========== 应急电话页 ========== -->
+<div class="page" id="page-call">
+  <div class="page-header">
+    <span class="back" onclick="go('page-home')">‹</span>
+    <span class="title">应急电话</span>
+  </div>
+
+  <div class="section-title" style="margin-top:12px">紧急救援</div>
+  <div class="phone-card" onclick="showModal('正在拨打 119...')">
+    <div class="pc-icon" style="background:var(--danger-bg)">🚒</div>
+    <div class="pc-info"><div class="pc-name">消防救援</div><div class="pc-number">119</div></div>
+    <div class="pc-call">📞</div>
+  </div>
+  <div class="phone-card" onclick="showModal('正在拨打 120...')">
+    <div class="pc-icon" style="background:var(--safe-bg)">🚑</div>
+    <div class="pc-info"><div class="pc-name">医疗急救</div><div class="pc-number">120</div></div>
+    <div class="pc-call">📞</div>
+  </div>
+  <div class="phone-card" onclick="showModal('正在拨打 110...')">
+    <div class="pc-icon" style="background:var(--primary-bg)">🚓</div>
+    <div class="pc-info"><div class="pc-name">公安报警</div><div class="pc-number">110</div></div>
+    <div class="pc-call">📞</div>
+  </div>
+
+  <div class="section-title">本地应急</div>
+  <div class="phone-card" onclick="showModal('正在拨打云岭镇防汛指挥部...')">
+    <div class="pc-icon" style="background:var(--warn-bg)">🏛️</div>
+    <div class="pc-info"><div class="pc-name">云岭镇防汛指挥部</div><div class="pc-number">027-8XXX-1001</div></div>
+    <div class="pc-call">📞</div>
+  </div>
+  <div class="phone-card" onclick="showModal('正在拨打村主任...')">
+    <div class="pc-icon" style="background:var(--primary-bg)">👨‍💼</div>
+    <div class="pc-info"><div class="pc-name">云岭村主任·张大明</div><div class="pc-number">138-XXXX-2001</div></div>
+    <div class="pc-call">📞</div>
+  </div>
+  <div class="phone-card" onclick="showModal('正在呼叫救援队队长...')">
+    <div class="pc-icon" style="background:var(--safe-bg)">🦺</div>
+    <div class="pc-info"><div class="pc-name">救援队队长·李志强</div><div class="pc-number">139-XXXX-3001</div></div>
+    <div class="pc-call">📞</div>
+  </div>
+
+  <div class="section-title">安置点</div>
+  <div class="phone-card" onclick="showModal('正在拨打安置点...')">
+    <div class="pc-icon" style="background:var(--safe-bg)">🏫</div>
+    <div class="pc-info"><div class="pc-name">云岭镇中心小学安置点</div><div class="pc-number">027-8XXX-4001</div></div>
+    <div class="pc-call">📞</div>
+  </div>
+</div>
+
+<!-- ========== 避险知识页 ========== -->
+<div class="page" id="page-knowledge">
+  <div class="page-header">
+    <span class="back" onclick="go('page-home')">‹</span>
+    <span class="title">山洪避险知识</span>
+  </div>
+
+  <div class="knowledge-card" style="margin-top:12px">
+    <h4>📖 山洪避险口诀</h4>
+    <p style="font-size:14px;line-height:2">山洪来、快转移；沿两侧、向高处；<br>莫贪财、保性命；听指挥、不乱跑；<br>被困时、上高处；发信号、等救援。</p>
+  </div>
+
+  <div class="section-title">避险要点</div>
+  <div class="list-card">
+    <div class="list-item" onclick="showModal('收到预警后，应立即停止户外活动，不要在河道、沟谷、低洼地带停留，迅速向高处转移。')">
+      <div class="li-icon" style="background:var(--danger-bg)">1️⃣</div>
+      <div class="li-content"><div class="li-title">收到预警立即转移</div><div class="li-desc">不要犹豫，时间就是生命</div></div>
+      <div class="li-arrow">›</div>
+    </div>
+    <div class="list-item" onclick="showModal('转移时应向两侧高处跑，不要顺着河道方向跑，因为山洪会顺着河道快速下泄。')">
+      <div class="li-icon" style="background:var(--warn-bg)">2️⃣</div>
+      <div class="li-content"><div class="li-title">向两侧高处转移</div><div class="li-desc">切勿顺河道方向跑</div></div>
+      <div class="li-arrow">›</div>
+    </div>
+    <div class="list-item" onclick="showModal('被洪水包围时，要迅速利用门板、桌椅、大块泡沫等漂浮物自救，并尽快爬上屋顶、大树等高处等待救援。')">
+      <div class="li-icon" style="background:var(--primary-bg)">3️⃣</div>
+      <div class="li-content"><div class="li-title">被困时利用漂浮物</div><div class="li-desc">爬上高处等待救援</div></div>
+      <div class="li-arrow">›</div>
+    </div>
+    <div class="list-item" onclick="showModal('被困时，白天可挥动鲜艳衣物，夜间可用手电筒、手机闪光灯发出求救信号，SOS信号为三短三长三短。')">
+      <div class="li-icon" style="background:var(--safe-bg)">4️⃣</div>
+      <div class="li-content"><div class="li-title">发出求救信号</div><div class="li-desc">SOS：三短三长三短</div></div>
+      <div class="li-arrow">›</div>
+    </div>
+    <div class="list-item" onclick="showModal('不要涉水过河！水深仅30cm就能冲倒成人，60cm就能冲走汽车。如必须涉水，用棍子探路，结伴同行。')">
+      <div class="li-icon" style="background:var(--danger-bg)">5️⃣</div>
+      <div class="li-content"><div class="li-title">切勿盲目涉水</div><div class="li-desc">30cm水流即可冲倒成人</div></div>
+      <div class="li-arrow">›</div>
+    </div>
+  </div>
+
+  <div class="section-title">视频教程</div>
+  <div class="list-card">
+    <div class="list-item" onclick="showModal('视频播放：山洪灾害避险指南（5分钟）')">
+      <div class="li-icon" style="background:var(--primary-bg)">▶️</div>
+      <div class="li-content"><div class="li-title">山洪灾害避险指南</div><div class="li-desc">5分钟 · 应急管理部制作</div></div>
+      <div class="li-arrow">›</div>
+    </div>
+    <div class="list-item" onclick="showModal('视频播放：自救互救基本技能（8分钟）')">
+      <div class="li-icon" style="background:var(--safe-bg)">▶️</div>
+      <div class="li-content"><div class="li-title">自救互救基本技能</div><div class="li-desc">8分钟 · 红十字会制作</div></div>
+      <div class="li-arrow">›</div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 家人报平安页 ========== -->
+<div class="page" id="page-family">
+  <div class="page-header">
+    <span class="back" onclick="go('page-home')">‹</span>
+    <span class="title">家人报平安</span>
+  </div>
+
+  <div style="background:linear-gradient(135deg,#1565C0,#0D47A1);color:#fff;padding:24px;margin:12px;border-radius:12px;text-align:center">
+    <div style="font-size:48px;margin-bottom:12px">💚</div>
+    <h2 style="font-size:18px;margin-bottom:8px">向家人报平安</h2>
+    <p style="font-size:13px;opacity:.9">一键发送平安信息给紧急联系人</p>
+  </div>
+
+  <div class="section-title">紧急联系人</div>
+  <div class="list-card">
+    <div class="list-item">
+      <div class="li-icon" style="background:var(--primary-bg)">👩</div>
+      <div class="li-content"><div class="li-title">王秀兰（妻子）</div><div class="li-desc">138-XXXX-5001</div></div>
+      <div class="li-arrow" onclick="showModal('已向王秀兰发送平安信息：我已安全，正在转移至云岭镇中心小学安置点。')">📤</div>
+    </div>
+    <div class="list-item">
+      <div class="li-icon" style="background:var(--safe-bg)">👨</div>
+      <div class="li-content"><div class="li-title">王小明（儿子）</div><div class="li-desc">139-XXXX-5002</div></div>
+      <div class="li-arrow" onclick="showModal('已向王小明发送平安信息：我已安全，正在转移至云岭镇中心小学安置点。')">📤</div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">平安信息（可编辑）</label>
+    <textarea class="form-textarea">我已安全，正在转移至云岭镇中心小学安置点。右腿轻微擦伤，无大碍。预计10:00到达，请放心。</textarea>
+  </div>
+
+  <button class="btn btn-success" onclick="showModal('平安信息已发送给所有紧急联系人！','发送成功')">一键报平安</button>
+</div>
+
+<!-- 底部导航 -->
+<div class="tabbar">
+  <div class="tabbar-item active" onclick="go('page-home')">
+    <div class="ti-icon">🏠</div><div class="ti-label">首页</div>
+  </div>
+  <div class="tabbar-item" onclick="go('page-report')">
+    <div class="ti-icon">📋</div><div class="ti-label">上报</div>
+  </div>
+  <div class="tabbar-item" onclick="go('page-track')">
+    <div class="ti-icon">📍</div><div class="ti-label">追踪</div>
+  </div>
+  <div class="tabbar-item" onclick="go('page-call')">
+    <div class="ti-icon">📞</div><div class="ti-label">电话</div>
+  </div>
+</div>
+
+<!-- 弹窗 -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="m-icon" id="modal-icon">✅</div>
+    <h3 id="modal-title">提示</h3>
+    <p id="modal-text"></p>
+    <button class="m-btn" style="background:var(--primary);color:#fff" onclick="closeModal()">确定</button>
+  </div>
+</div>
+
+</div>
+</div>
+
+<script>
+function go(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  document.querySelector('.screen').scrollTop = 0;
+  // 更新底部导航高亮
+  document.querySelectorAll('.tabbar-item').forEach(t => t.classList.remove('active'));
+  const tabMap = {'page-home':0,'page-report':1,'page-track':2,'page-call':3};
+  if (tabMap[pageId] !== undefined) {
+    document.querySelectorAll('.tabbar-item')[tabMap[pageId]].classList.add('active');
+  }
+}
+
+function selectChip(el) {
+  // 单选模式：同组内只选一个
+  const group = el.parentElement;
+  // 判断是否为伤情等级组（特殊处理）
+  if (group.querySelector('.chip[style*="danger"]') || group.textContent.includes('重伤')) {
+    group.querySelectorAll('.chip').forEach(c => {
+      c.classList.remove('selected');
+      c.style.background = '#FAFAFA';
+      c.style.color = '';
+    });
+    el.classList.add('selected');
+    el.style.background = el.style.borderColor || 'var(--primary)';
+    el.style.color = '#fff';
+  } else {
+    el.classList.toggle('selected');
+  }
+}
+
+function showModal(text, title) {
+  document.getElementById('modal-text').textContent = text;
+  document.getElementById('modal-title').textContent = title || '提示';
+  document.getElementById('modal-icon').textContent = title === '登记成功' || title === '上报成功' || title === '发送成功' ? '✅' : 'ℹ️';
+  document.getElementById('modal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+}
+</script>
+</body>
+</html>

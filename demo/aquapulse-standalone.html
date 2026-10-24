@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智讯通 AquaPulse · 全年水灾害智能防御系统</title>
+<style>
+  /* ============ 基础重置与变量 ============ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root{
+    --primary:#005288; --primary-dark:#003D66; --primary-light:#0070B8;
+    --accent:#2E7DFF; --accent-dark:#1565C0;
+    --safe:#27AE60; --warn-red:#E62020; --warn-orange:#F57C00; --warn-yellow:#FBC000; --warn-blue:#1976D2;
+    --ink:#1D2129; --ink-sub:#4E5969; --border:#E5E6EB; --bg:#F5F7FA;
+    --radius-btn:10px; --radius-card:14px;
+  }
+  html{ font-size:17px; font-family:'Noto Sans SC','Roboto',system-ui,-apple-system,sans-serif; }
+  body{ background:var(--bg); color:var(--ink); -webkit-font-smoothing:antialiased; font-size:0.94rem; }
+  button{ cursor:pointer; font-family:inherit; border:none; }
+  input,select,textarea{ font-family:inherit; font-size:0.88rem; }
+  ::-webkit-scrollbar{ width:6px; height:6px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+  ::-webkit-scrollbar-thumb{ background:#C9CDD4; border-radius:3px; }
+  ::-webkit-scrollbar-thumb:hover{ background:#86909C; }
+
+  /* ============ 通用组件 ============ */
+  .btn-primary{ height:44px; padding:0 24px; border-radius:var(--radius-btn); background:var(--primary); color:#fff; font-weight:700; transition:background .2s; }
+  .btn-primary:hover{ background:var(--primary-light); }
+  .btn-accent{ height:44px; padding:0 24px; border-radius:var(--radius-btn); background:var(--accent); color:#fff; font-weight:700; transition:background .2s; }
+  .btn-accent:hover{ background:var(--accent-dark); }
+  .btn-danger{ height:44px; padding:0 24px; border-radius:var(--radius-btn); background:var(--warn-red); color:#fff; font-weight:700; opacity:1; transition:opacity .2s; }
+  .btn-danger:hover{ opacity:.9; }
+  .btn-safe{ height:44px; padding:0 24px; border-radius:var(--radius-btn); background:var(--safe); color:#fff; font-weight:700; transition:opacity .2s; }
+  .btn-safe:hover{ opacity:.9; }
+  .btn-secondary{ height:44px; padding:0 24px; border-radius:var(--radius-btn); background:#fff; color:var(--ink); border:1px solid var(--border); font-weight:500; transition:background .2s; }
+  .btn-secondary:hover{ background:var(--bg); }
+  .card{ background:#fff; border-radius:var(--radius-card); box-shadow:0 1px 4px rgba(0,0,0,.06); }
+  .input-field{ height:40px; padding:0 12px; border-radius:var(--radius-btn); border:1px solid var(--border); background:#fff; color:var(--ink); width:100%; transition:border .2s; }
+  .input-field:focus{ outline:none; border-color:var(--primary); }
+  textarea.input-field{ height:auto; padding:10px 12px; resize:vertical; line-height:1.6; }
+  .tag{ display:inline-flex; align-items:center; padding:2px 8px; border-radius:4px; font-size:.72rem; font-weight:500; }
+  @keyframes pulse-warn{ 0%,100%{opacity:1} 50%{opacity:.4} }
+  .animate-pulse-warn{ animation:pulse-warn 1s ease-in-out infinite; }
+  @keyframes fade-in{ from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:translateY(0)} }
+  .animate-fade-in{ animation:fade-in .3s ease; }
+  @keyframes spin{ to{ transform:rotate(360deg) } }
+  .spin{ animation:spin .8s linear infinite; }
+  .hidden{ display:none !important; }
+
+  /* ============ Toast ============ */
+  #toast{ position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:9999; background:rgba(30,33,41,.92); color:#fff; padding:12px 22px; border-radius:10px; font-size:.88rem; box-shadow:0 6px 20px rgba(0,0,0,.2); display:flex; align-items:center; gap:8px; }
+  #toast.ok{ background:rgba(39,174,96,.95); }
+  #toast.err{ background:rgba(230,32,32,.95); }
+
+  /* ============ 登录页（分栏玻璃拟态） ============ */
+  .login-wrap{ min-height:100vh; width:100%; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(135deg,#001A2E 0%,#002B4A 35%,#005288 75%,#0070B8 100%); padding:20px; position:relative; overflow:hidden; }
+  .login-wrap .blob{ position:absolute; border-radius:50%; filter:blur(90px); pointer-events:none; animation:blobFloat 14s ease-in-out infinite; }
+  .login-wrap .blob.b1{ top:-8%; left:-4%; width:420px; height:420px; background:rgba(0,172,193,.28); }
+  .login-wrap .blob.b2{ bottom:-12%; right:-6%; width:480px; height:480px; background:rgba(46,125,255,.22); animation-delay:-5s; }
+  .login-wrap .blob.b3{ top:30%; left:52%; width:300px; height:300px; background:rgba(0,82,136,.35); animation-delay:-9s; }
+  @keyframes blobFloat{ 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(40px,-30px) scale(1.08)} 66%{transform:translate(-30px,25px) scale(.95)} }
+  .login-wrap .grid-lines{ position:absolute; inset:0; pointer-events:none; opacity:.12;
+    background-image:linear-gradient(rgba(255,255,255,.5) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.5) 1px,transparent 1px);
+    background-size:48px 48px;
+    -webkit-mask-image:radial-gradient(ellipse at 50% 40%,#000 30%,transparent 75%); mask-image:radial-gradient(ellipse at 50% 40%,#000 30%,transparent 75%); }
+  .login-wrap .waves{ position:absolute; left:0; right:0; bottom:0; pointer-events:none; }
+  .login-box{ position:relative; z-index:2; width:100%; max-width:1120px; max-height:calc(100vh - 40px); display:flex; border-radius:24px; overflow:hidden;
+    background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.18); box-shadow:0 32px 80px rgba(0,0,0,.45);
+    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); animation:cardRise .7s cubic-bezier(.2,.8,.3,1); }
+  @keyframes cardRise{ from{opacity:0; transform:translateY(28px) scale(.98)} to{opacity:1; transform:none} }
+  .login-hero{ flex:1.15; padding:44px 42px; display:flex; flex-direction:column; gap:16px; color:#fff; position:relative; overflow-y:auto; }
+  .login-hero .logo{ width:62px; height:62px; border-radius:18px; background:linear-gradient(135deg,#00ACC1,#0070B8);
+    display:flex; align-items:center; justify-content:center; color:#fff; box-shadow:0 10px 28px rgba(0,172,193,.45); position:relative; flex-shrink:0; }
+  .login-hero .logo::after{ content:''; position:absolute; inset:-6px; border-radius:22px; border:1.5px solid rgba(0,172,193,.5); animation:logoPulse 2.4s ease-out infinite; }
+  @keyframes logoPulse{ 0%{transform:scale(1); opacity:.9} 100%{transform:scale(1.35); opacity:0} }
+  .login-hero h1{ font-size:2.45rem; font-weight:800; letter-spacing:.5px; line-height:1.15; }
+  .login-hero h1 .en{ background:linear-gradient(90deg,#7FD8E8,#FFFFFF); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .login-hero .sub{ font-size:1.02rem; font-weight:600; color:#7FD8E8; margin-top:4px; }
+  .login-hero .slogan{ font-size:.85rem; color:rgba(255,255,255,.78); line-height:1.75; }
+  .hero-chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .hero-chips span{ font-size:.73rem; font-weight:600; padding:5px 12px; border-radius:999px; border:1px solid rgba(255,255,255,.28); background:rgba(255,255,255,.08); }
+  .hero-stats{ display:flex; gap:10px; margin-top:auto; padding-top:8px; }
+  .hero-stat{ flex:1; padding:12px 14px; border-radius:14px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14); }
+  .hero-stat b{ display:block; font-size:1.28rem; font-weight:800; font-family:'Arial',sans-serif; color:#fff; line-height:1.2; }
+  .hero-stat i{ font-style:normal; font-size:.68rem; color:rgba(255,255,255,.65); }
+  .hero-foot{ font-size:.7rem; color:rgba(255,255,255,.5); letter-spacing:1px; }
+  .login-panel{ width:452px; flex-shrink:0; background:rgba(255,255,255,.96); padding:34px 32px; display:flex; flex-direction:column; overflow-y:auto; }
+  .login-panel .panel-title{ font-size:.92rem; font-weight:700; color:var(--ink); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+  .role-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
+  .role-card{ text-align:left; padding:13px; border-radius:14px; border:1.5px solid var(--border); background:#fff; display:flex; align-items:center; gap:10px; transition:all .18s; }
+  .role-card:hover{ border-color:rgba(0,82,136,.35); box-shadow:0 6px 16px rgba(0,82,136,.12); transform:translateY(-2px); }
+  .role-card.active{ border-color:var(--primary); background:rgba(0,82,136,.05); box-shadow:0 8px 20px rgba(0,82,136,.18); }
+  .role-icon{ width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#fff; flex-shrink:0; box-shadow:0 4px 10px rgba(0,0,0,.15); }
+  .role-name{ font-weight:700; color:var(--ink); font-size:.84rem; }
+  .role-desc{ font-size:.7rem; color:var(--ink-sub); margin-top:2px; line-height:1.4; }
+  .login-form{ display:flex; flex-direction:column; gap:12px; }
+  .login-form label{ display:block; font-size:.72rem; font-weight:600; color:var(--ink-sub); margin-bottom:5px; letter-spacing:.5px; }
+  .login-btn{ height:48px; width:100%; border-radius:12px; background:linear-gradient(135deg,#005288,#0070B8); color:#fff; font-weight:700; font-size:.95rem; letter-spacing:3px;
+    display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 8px 20px rgba(0,82,136,.35); transition:all .2s; }
+  .login-btn:hover{ transform:translateY(-1px); box-shadow:0 12px 26px rgba(0,82,136,.45); filter:brightness(1.08); }
+  .login-foot{ text-align:center; font-size:.7rem; color:var(--ink-sub); margin-top:auto; padding-top:16px; }
+  @media (max-width:960px){ .login-box{ flex-direction:column; max-width:520px; } .login-hero{ padding:34px 30px 24px; } .login-panel{ width:100%; } .hero-stats{ margin-top:10px; } }
+
+  /* ============ 管理端布局 ============ */
+  .admin-shell{ height:100vh; width:100%; display:flex; background:var(--bg); overflow:hidden; position:relative; }
+  .geo-bg{ position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:0; opacity:.04; }
+  .geo-bg svg{ position:absolute; inset:0; width:100%; height:100%; }
+  .admin-side{ width:240px; flex-shrink:0; background:var(--primary); color:#fff; display:flex; flex-direction:column; position:relative; z-index:2; }
+  .admin-side .brand{ height:64px; display:flex; align-items:center; gap:8px; padding:0 16px; border-bottom:1px solid rgba(255,255,255,.1); }
+  .admin-side .brand b{ font-size:.92rem; }
+  .admin-side nav{ flex:1; padding:12px 0; overflow-y:auto; }
+  .menu-item{ display:flex; align-items:center; gap:12px; padding:14px 16px; font-size:.82rem; color:rgba(255,255,255,.8); border-left:3px solid transparent; transition:background .15s; }
+  .menu-item:hover{ background:var(--primary-dark); color:#fff; }
+  .menu-item.active{ background:var(--primary-light); color:#fff; font-weight:600; border-left-color:#fff; }
+  .admin-side .side-foot{ padding:12px; border-top:1px solid rgba(255,255,255,.1); font-size:.72rem; color:rgba(255,255,255,.6); }
+  .admin-main{ flex:1; display:flex; flex-direction:column; min-width:0; position:relative; z-index:2; }
+  .admin-top{ height:64px; flex-shrink:0; background:#fff; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; padding:0 24px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+  .admin-top h1{ font-size:1.1rem; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:8px; }
+  .admin-content{ flex:1; overflow:auto; }
+
+  /* ============ 移动端外壳 ============ */
+  .mobile-shell{ position:relative; width:100%; max-width:480px; min-height:100vh; background:var(--bg); display:flex; flex-direction:column; margin:0 auto; box-shadow:0 0 30px rgba(0,0,0,.08); }
+  .mobile-top{ height:56px; flex-shrink:0; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:space-between; padding:0 16px; box-shadow:0 1px 4px rgba(0,0,0,.1); position:sticky; top:0; z-index:50; }
+  .mobile-top .mt-title{ font-weight:700; font-size:.94rem; display:flex; align-items:center; gap:8px; }
+  .mobile-top .mt-user{ font-size:.82rem; opacity:.9; display:flex; align-items:center; gap:8px; }
+  .mobile-content{ flex:1; overflow-y:auto; padding:12px; }
+  .mobile-content.no-pad{ padding:0; }
+  .mobile-bottom{ position:sticky; bottom:0; width:100%; max-width:480px; height:56px; background:#fff; border-top:1px solid var(--border); display:flex; z-index:30; }
+  .mobile-bottom button{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:.7rem; color:var(--ink-sub); }
+  .mobile-bottom button.active{ color:var(--primary); font-weight:700; }
+
+  /* ============ 预警徽章/状态徽章 ============ */
+  .wb{ display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:6px; font-size:.74rem; font-weight:700; color:#fff; }
+  .wb.sm{ padding:2px 7px; font-size:.68rem; }
+  .ib{ display:inline-flex; align-items:center; padding:2px 8px; border-radius:4px; font-size:.7rem; font-weight:600; }
+  .sb{ display:inline-flex; align-items:center; padding:2px 8px; border-radius:4px; font-size:.7rem; font-weight:600; }
+
+  /* 八步动画 */
+  @keyframes step-in{ from{opacity:0; transform:translateY(16px)} to{opacity:1; transform:translateY(0)} }
+  .model-step{ transition:all .5s; }
+
+  /* 表格 */
+  table{ width:100%; border-collapse:collapse; font-size:.82rem; }
+  th{ text-align:left; color:var(--ink-sub); font-weight:500; border-bottom:1px solid var(--border); padding:10px 8px; font-size:.76rem; }
+  td{ padding:10px 8px; border-bottom:1px solid var(--border); }
+  tbody tr:hover{ background:var(--bg); }
+
+  /* SVG 图标默认 */
+  svg{ display:inline-block; vertical-align:middle; }
+</style>
+</head>
+<body>
+
+<!-- ===================== 登录页 ===================== -->
+<div id="page-login" class="login-wrap">
+  <div class="grid-lines"></div>
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <div class="blob b3"></div>
+  <svg class="waves" viewBox="0 0 1440 160" preserveAspectRatio="none" style="width:100%;height:130px;">
+    <path d="M0,80 C240,120 480,20 720,70 C960,120 1200,30 1440,90 L1440,160 L0,160 Z" fill="rgba(0,172,193,.14)"/>
+    <path d="M0,110 C240,150 480,60 720,100 C960,140 1200,60 1440,120 L1440,160 L0,160 Z" fill="rgba(46,125,255,.18)"/>
+  </svg>
+  <div class="login-box">
+    <div class="login-hero">
+      <div class="logo">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+      </div>
+      <div>
+        <h1>智讯通 <span class="en">AquaPulse</span></h1>
+        <div class="sub">一年四季的水灾害 AI 防御体系</div>
+      </div>
+      <p class="slogan">用 AI 跑完「监测 → 预警 → 推演 → 派单 → 定损」防汛全链条，覆盖全年各季水灾害场景。</p>
+      <div class="hero-chips">
+        <span>夏 · 山洪 / 滑坡 / 内涝 / 台风</span>
+        <span>秋 · 华西秋汛</span>
+        <span>冬 · 凌汛 / 南方冬汛</span>
+        <span>春 · 开江凌汛 / 融雪</span>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><b>3 分钟</b><i>预警响应时间</i></div>
+        <div class="hero-stat"><b>±15 分钟</b><i>洪峰到达误差</i></div>
+        <div class="hero-stat"><b>95%</b><i>预警有效率</i></div>
+      </div>
+      <div class="hero-foot">Team AquaPulse · GitHub 开源</div>
+    </div>
+    <div class="login-panel">
+      <div class="panel-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#005288" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        请选择登录角色
+      </div>
+      <div class="role-grid" id="roleGrid"></div>
+      <div class="login-form">
+        <div>
+          <label>用户名</label>
+          <input class="input-field" id="loginUser" placeholder="请输入用户名" autocomplete="username">
+        </div>
+        <div>
+          <label>密码</label>
+          <input class="input-field" id="loginPwd" type="password" placeholder="请输入密码" autocomplete="current-password">
+        </div>
+        <div id="loginErr" class="hidden" style="font-size:.82rem; color:var(--warn-red); background:rgba(230,32,32,.08); padding:8px 12px; border-radius:8px; display:flex; align-items:center; gap:6px;"></div>
+        <button class="login-btn" onclick="doLogin()">
+          登 录
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </div>
+      <p class="login-foot">智讯通 AquaPulse · 零依赖单文件 · 双击即开即用</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== 管理端 ===================== -->
+<div id="page-admin" class="admin-shell hidden">
+  <!-- 地理背景 -->
+  <div class="geo-bg">
+    <svg preserveAspectRatio="xMidYMid slice" viewBox="0 0 1200 800">
+      <g fill="#005288"><path d="M0,500 L80,300 L160,420 L240,220 L320,380 L400,260 L480,400 L480,800 L0,800 Z"/><path d="M480,400 L560,280 L640,360 L640,800 L480,800 Z" opacity="0.6"/></g>
+      <g fill="#005288" opacity="0.5"><path d="M900,450 L960,320 L1020,400 L1080,280 L1140,380 L1200,300 L1200,800 L900,800 Z"/></g>
+      <g fill="none" stroke="#1976D2" stroke-width="3" opacity="0.8"><path d="M120,200 Q250,300 200,400 T350,550 Q450,650 380,750"/><path d="M350,550 Q500,600 600,550 T800,650 Q900,700 850,780"/></g>
+      <g fill="none" stroke="#1976D2" stroke-width="1.5" opacity="0.5"><path d="M200,400 Q280,450 350,420"/><path d="M600,550 Q680,500 750,520"/></g>
+      <g fill="none" stroke="#005288" stroke-width="1" opacity="0.3"><path d="M700,600 Q800,580 900,600 Q1000,620 1100,600"/><path d="M700,650 Q800,630 900,650 Q1000,670 1100,650"/><path d="M700,700 Q800,680 900,700 Q1000,720 1100,700"/></g>
+      <g fill="#F57C00" opacity="0.6"><circle cx="240" cy="350" r="4"/><circle cx="500" cy="450" r="4"/><circle cx="800" cy="550" r="4"/><circle cx="350" cy="600" r="3"/><circle cx="650" cy="400" r="3"/></g>
+    </svg>
+  </div>
+  <!-- 左侧菜单 -->
+  <aside class="admin-side">
+    <div class="brand">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+      <b>智讯通 AquaPulse</b>
+    </div>
+    <nav id="adminMenu"></nav>
+    <div class="side-foot">
+      <div id="adminSideName" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
+      <div id="adminSideAcc" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; opacity:.7;"></div>
+    </div>
+  </aside>
+  <!-- 主体 -->
+  <div class="admin-main">
+    <header class="admin-top">
+      <h1>智讯通 AquaPulse <span class="tag" style="background:rgba(0,82,136,.1); color:var(--primary);">全年水灾害指挥调度中心</span></h1>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="font-size:.84rem; color:var(--ink-sub);" id="adminTopName"></span>
+        <button class="btn-secondary" style="height:36px; padding:0 16px; font-size:.82rem; display:flex; align-items:center; gap:6px;" onclick="logout()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          退出
+        </button>
+      </div>
+    </header>
+    <main class="admin-content" id="adminContent"></main>
+  </div>
+</div>
+
+<!-- ===================== 村民端 ===================== -->
+<div id="page-villager" class="hidden">
+  <div class="mobile-shell">
+    <header class="mobile-top">
+      <div class="mt-title"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> 村民避险端</div>
+      <div class="mt-user"><span id="villagerName"></span> <span onclick="logout()" style="cursor:pointer; opacity:.85;">退出</span></div>
+    </header>
+    <main class="mobile-content" id="villagerContent"></main>
+  </div>
+</div>
+
+<!-- ===================== 救援端 ===================== -->
+<div id="page-rescue" class="hidden">
+  <div class="mobile-shell">
+    <header class="mobile-top" style="background:linear-gradient(135deg,#E65100,#F57C00);">
+      <div class="mt-title"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="4.93" y1="4.93" x2="9.17" y2="9.17"/><line x1="14.83" y1="14.83" x2="19.07" y2="19.07"/><line x1="14.83" y1="9.17" x2="19.07" y2="4.93"/><line x1="9.17" y1="14.83" x2="4.93" y2="19.07"/></svg> 应急救援端</div>
+      <div class="mt-user"><span id="rescueName"></span> <span onclick="logout()" style="cursor:pointer; opacity:.85;">退出</span></div>
+    </header>
+    <main class="mobile-content" id="rescueContent"></main>
+  </div>
+</div>
+
+<!-- ===================== 农业统计端 ===================== -->
+<div id="page-agriculture" class="hidden">
+  <div class="mobile-shell">
+    <header class="mobile-top" style="background:linear-gradient(135deg,#1565C0,#1976D2);">
+      <div class="mt-title"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/></svg> 农业灾情统计</div>
+      <div class="mt-user"><span id="agriName"></span> <span onclick="logout()" style="cursor:pointer; opacity:.85;">退出</span></div>
+    </header>
+    <main class="mobile-content" id="agriContent"></main>
+    <nav class="mobile-bottom" id="agriNav"></nav>
+  </div>
+</div>
+
+<div id="toast" class="hidden"></div>
+
+<script>
+/* ============================================================
+   洪水安防地理智能系统 - 完整演示版
+   ============================================================ */
+
+/* ---------- 图标库（SVG 字符串） ---------- */
+const IC = {
+  shield:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  home:'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+  lifebuoy:'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="4.93" y1="4.93" x2="9.17" y2="9.17"/><line x1="14.83" y1="14.83" x2="19.07" y2="19.07"/><line x1="14.83" y1="9.17" x2="19.07" y2="4.93"/><line x1="9.17" y1="14.83" x2="4.93" y2="19.07"/></svg>',
+  sprout:'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/></svg>',
+  alert:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  layout:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>',
+  radar:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.07 4.93A10 10 0 0 0 6.99 3.34"/><path d="M4 6.99A10 10 0 0 0 19.07 19.07"/><path d="M17.66 6.34A8 8 0 0 0 8.46 4.77"/><path d="M4.77 8.46a8 8 0 0 0 12.89 9.07"/><line x1="12" y1="12" x2="16" y2="8"/><circle cx="12" cy="12" r="1.5"/></svg>',
+  users:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  cloud:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>',
+  clock:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+  mapPin:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+  chevR:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>',
+  chevL:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>',
+  play:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>',
+  send:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',
+  refresh:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>',
+  phone:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+  pkg:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+  building:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><line x1="9" y1="9" x2="9" y2="9.01"/><line x1="9" y1="12" x2="9" y2="12.01"/><line x1="9" y1="15" x2="9" y2="15.01"/><line x1="9" y1="18" x2="9" y2="18.01"/></svg>',
+  server:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>',
+  zap:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+  activity:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+  shieldCheck:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>',
+  trend:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+  gauge:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14a4 4 0 1 0-4-4"/><path d="M12 14l4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>',
+  nav:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>',
+  check:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  wave:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 2 0"/><path d="M2 18c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/></svg>',
+  mountain:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3l4 8 5-5 5 15H2L8 3z"/></svg>',
+  amb:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M21 16v3a2 2 0 0 1-2 2h-3"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>',
+  edit:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+  radio:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>',
+  msg:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  news:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8z"/></svg>',
+  arrowUp:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>',
+  book:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+  fileText:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+};
+
+/* ---------- 工具函数 ---------- */
+function timeAgo(iso){
+  const diff = Date.now() - new Date(iso).getTime();
+  if(diff<0) return '刚刚';
+  const mm = Math.floor(diff/60000), hh = Math.floor(mm/60), dd = Math.floor(hh/24);
+  if(dd>0) return dd+'天'+(hh%24)+'小时前';
+  if(hh>0) return hh+'小时'+(mm%60)+'分钟前';
+  if(mm>0) return mm+'分钟前';
+  return '刚刚';
+}
+function fmtTime(iso){
+  if(!iso) return '-';
+  const d = new Date(iso);
+  const p = n => String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());
+}
+function esc(s){ return s==null?'':String(s); }
+function $(id){ return document.getElementById(id); }
+function showToast(msg, type){
+  const t = $('toast');
+  t.className = '';
+  if(type==='ok') t.classList.add('ok');
+  else if(type==='err') t.classList.add('err');
+  t.innerHTML = (type==='err'?IC.alert:type==='ok'?IC.check:'') + '<span>'+msg+'</span>';
+  setTimeout(()=>t.classList.add('hidden'), 2600);
+}
+function show(id){ document.querySelectorAll('#page-login,#page-admin,#page-villager,#page-rescue,#page-agriculture').forEach(el=>el.classList.add('hidden')); $(id).classList.remove('hidden'); }
+
+/* ---------- 预警/伤情/状态 配置 ---------- */
+const WC = { red:{label:'红色预警',color:'#E62020'}, orange:{label:'橙色预警',color:'#F57C00'}, yellow:{label:'黄色预警',color:'#FBC000',dark:true}, blue:{label:'蓝色预警',color:'#1976D2'} };
+const ICfg = { none:{label:'无受伤',color:'#27AE60'}, minor:{label:'轻微受伤',color:'#F57C00'}, severe:{label:'重度受伤',color:'#E62020'} };
+const SCfg = { pending:{label:'待避险',color:'#E62020'}, sheltered:{label:'已安置',color:'#1976D2'}, rescuing:{label:'救援中',color:'#F57C00'}, safe:{label:'已安全',color:'#27AE60'} };
+
+/* ---------- 全年灾害类型与四季日历（夏汛+冬凌） ---------- */
+const DTYPE = {
+  flashflood:{label:'山洪',season:'夏秋季',color:'#E62020',icon:'mountain',desc:'山区沟谷短时强降水引发的暴涨洪水，来势猛、历时短、破坏力强'},
+  landslide:{label:'滑坡',season:'夏秋季',color:'#F57C00',icon:'mountain',desc:'暴雨渗透诱发山体滑移，常与山洪灾害链伴生'},
+  urban:{label:'城市内涝',season:'夏秋季',color:'#7B1FA2',icon:'building',desc:'强降雨超过管网排放能力，低洼街区与下穿隧道积水'},
+  typhoon:{label:'台风风暴潮',season:'夏秋季',color:'#1565C0',icon:'wave',desc:'台风登陆带来暴雨增水，沿海沿江潮位顶托成灾'},
+  icejam:{label:'凌汛',season:'冬春季',color:'#00ACC1',icon:'wave',desc:'封冻河流开江时冰凌卡塞形成冰塞/冰坝，壅高水位漫滩成灾——黄河宁蒙段、黑龙江、松花江高发'},
+  winterflood:{label:'南方冬汛',season:'冬季',color:'#5E35B1',icon:'cloud',desc:'冬季持续性强降水引发的江河洪水，湘江、赣江、桂江、贺江等南方河流，强厄尔尼诺年份更明显'},
+  snowmelt:{label:'融雪洪水',season:'秋冬春季',color:'#00897B',icon:'trend',desc:'气温骤升导致积雪、冰川加速融化汇入河道，新疆、青藏高原等山区河流高发'},
+  drought:{label:'冬春干旱',season:'冬春季',color:'#8D6E63',icon:'cloud',desc:'持续少雨导致农业用水紧张，需提前调度水源'},
+};
+const SEASON_CALENDAR = [
+  {m:1,  d:'一月',   active:['icejam','drought','winterflood'],  note:'封河期冰塞风险；南方冬汛持续（厄尔尼诺年份）'},
+  {m:2,  d:'二月',   active:['icejam','drought'],                note:'开江关键期，重点防范弯道冰塞壅水与武开河'},
+  {m:3,  d:'三月',   active:['icejam','drought','snowmelt'],     note:'北方河流陆续开江，全年第一个凌汛高发月；高原融雪开始'},
+  {m:4,  d:'四月',   active:['icejam','drought','flashflood','snowmelt'], note:'华南前汛期开始，桃花汛叠加融雪径流'},
+  {m:5,  d:'五月',   active:['flashflood','landslide','urban'],note:'华南暴雨增多，局地山洪滑坡初发'},
+  {m:6,  d:'六月',   active:['flashflood','landslide','urban','typhoon'], note:'江淮梅雨，主汛期正式拉开'},
+  {m:7,  d:'七月',   active:['flashflood','landslide','urban','typhoon'], note:'全国主汛期高峰，山洪滑坡伤亡最集中'},
+  {m:8,  d:'八月',   active:['flashflood','landslide','urban','typhoon'], note:'台风密集登陆，暴雨洪水叠加风暴潮'},
+  {m:9,  d:'九月',   active:['flashflood','landslide','urban','typhoon'], note:'秋台风与华西秋汛叠加'},
+  {m:10, d:'十月',   active:['flashflood','drought','snowmelt'],note:'华西秋汛尾声，北方江河转入枯水期；秋末融雪初发'},
+  {m:11, d:'十一月', active:['icejam','drought','winterflood'],note:'北方河流流凌封冻，防凌期开始；南方冬汛开启'},
+  {m:12, d:'十二月', active:['icejam','drought','winterflood'],note:'全面封冻期，封冻里程巡查；南方冬汛持续'},
+];
+const ICE_STATIONS = [
+  {id:'IS-01',name:'河湾村段冰厚遥测站',section:'大河弯道段（由南向北流）',lng:104.62,lat:30.08,ice_thickness:0.42,flow_density:65,water_level:'超警 0.3m',temp:-8,status:'warn'},
+  {id:'IS-02',name:'开河滩段流凌监测站',section:'低纬向高纬转折段（卡塞高风险）',lng:104.88,lat:30.12,ice_thickness:0.31,flow_density:80,water_level:'超警 0.8m',temp:-3,status:'danger'},
+  {id:'IS-03',name:'北岸水文站',section:'主河道稳定封冻段',lng:104.35,lat:29.98,ice_thickness:0.55,flow_density:20,water_level:'正常',temp:-12,status:'ok'},
+];
+
+function warnBadge(level, sm){
+  const c = WC[level]||WC.blue;
+  return '<span class="wb'+(sm?' sm':'')+'" style="background:'+c.color+';'+(c.dark?'color:#1D2129':'')+'">'+IC.alert.replace('width="20"','width="'+(sm?12:14)+'"').replace('height="20"','height="'+(sm?12:14)+'"')+' '+c.label+'</span>';
+}
+function injuryBadge(level){
+  const c = ICfg[level]||ICfg.none;
+  return '<span class="ib" style="background:'+c.color+'15; color:'+c.color+'">'+c.label+'</span>';
+}
+function statusBadge(st){
+  const c = SCfg[st]||SCfg.pending;
+  return '<span class="sb" style="background:'+c.color+'15; color:'+c.color+'">'+c.label+'</span>';
+}
+
+/* ============================================================
+   种子数据（从 db.ts 提取）
+   ============================================================ */
+const DB = {
+  villages:[
+    {id:'V001',name:'青龙山村落',township:'青龙山乡',lng:103.7521,lat:29.5543,terrain_risk:'沟谷低洼地带，坡度35°，历史山洪多发区'},
+    {id:'V002',name:'石桥沟村落',township:'青龙山乡',lng:103.7689,lat:29.5612,terrain_risk:'河道拐弯凸岸，两侧坡度42°，泥石流隐患区'},
+    {id:'V003',name:'云岭村落',township:'云岭乡',lng:103.8105,lat:29.5837,terrain_risk:'双河口交汇处，汇流面积大，山洪高风险区'},
+    {id:'V004',name:'观音岩村落',township:'云岭乡',lng:103.7923,lat:29.5748,terrain_risk:'陡坡危岩区域，滑坡历史频发，坡度48°'},
+    {id:'V005',name:'溪源村落',township:'溪源乡',lng:103.8356,lat:29.5921,terrain_risk:'溪河上游低洼处，植被覆盖率低，产流快速'},
+  ],
+  shelters:[
+    {id:'S001',name:'青龙山乡政府安置点',village_id:'V001',lng:103.7568,lat:29.5589,capacity:300,current_count:0},
+    {id:'S002',name:'石桥沟小学安置点',village_id:'V002',lng:103.7715,lat:29.5648,capacity:200,current_count:0},
+    {id:'S003',name:'云岭乡卫生院安置点',village_id:'V003',lng:103.8142,lat:29.5862,capacity:250,current_count:0},
+    {id:'S004',name:'观音岩村委会安置点',village_id:'V004',lng:103.7958,lat:29.5781,capacity:180,current_count:0},
+    {id:'S005',name:'溪源乡文化站安置点',village_id:'V005',lng:103.8389,lat:29.5948,capacity:220,current_count:0},
+  ],
+  users:[
+    {id:'U001',username:'admin',password:'admin123',role:'admin',name:'防汛抗旱指挥部',phone:'0833-6666001'},
+    {id:'U002',username:'villager1',password:'123456',role:'villager',name:'张志强',phone:'13800138001',village_id:'V001'},
+    {id:'U007',username:'rescue1',password:'123456',role:'rescue',name:'救援队队长·陈勇',phone:'13900139001',team_id:'T001'},
+    {id:'U009',username:'agriculture',password:'agri123',role:'agriculture',name:'农业统计员·周明',phone:'0833-6666002'},
+  ],
+  rescue_teams:[
+    {id:'T001',name:'青龙山应急救援一队',leader_name:'陈勇',member_count:8,lng:103.7550,lat:29.5560,status:'standby'},
+    {id:'T002',name:'云岭应急救援二队',leader_name:'杨帆',member_count:6,lng:103.8120,lat:29.5850,status:'standby'},
+  ],
+  personnel:[
+    {id:'P001',name:'张志强',phone:'13800138001',village_id:'V001',lng:103.7525,lat:29.5548,companion_count:4,injury_level:'minor',material_needs:'饮用水,食品',safety_status:'pending'},
+    {id:'P002',name:'李秀英',phone:'13800138002',village_id:'V002',lng:103.7692,lat:29.5618,companion_count:3,injury_level:'none',material_needs:'饮用水',safety_status:'pending'},
+    {id:'P003',name:'王建国',phone:'13800138003',village_id:'V003',lng:103.8108,lat:29.5842,companion_count:5,injury_level:'severe',material_needs:'急救药品,饮用水,食品,保暖物资',safety_status:'pending'},
+    {id:'P004',name:'赵桂花',phone:'13800138004',village_id:'V004',lng:103.7928,lat:29.5753,companion_count:2,injury_level:'none',material_needs:'食品',safety_status:'pending'},
+    {id:'P005',name:'刘德明',phone:'13800138005',village_id:'V005',lng:103.8362,lat:29.5928,companion_count:6,injury_level:'minor',material_needs:'饮用水,食品,保暖物资',safety_status:'pending'},
+    {id:'P006',name:'孙长林',phone:'13800138006',village_id:'V001',lng:103.7530,lat:29.5540,companion_count:2,injury_level:'none',material_needs:'',safety_status:'safe'},
+    {id:'P007',name:'陈国华',phone:'13800138007',village_id:'V003',lng:103.8110,lat:29.5835,companion_count:3,injury_level:'none',material_needs:'饮用水',safety_status:'sheltered'},
+  ],
+  warnings:[],
+  rescue_tasks:[],
+  agriculture_records:[
+    {id:'A001',villager_name:'张志强',village_id:'V001',crop_type:'水稻',crop_area:8.5,crop_damage:'全部冲毁',crop_loss:28000,livestock_type:'鸡',livestock_original:120,livestock_dead:80,barn_damage:'圈舍倒塌',livestock_loss:4800,created_at:'2025-07-15T10:00:00Z',confirmed:false},
+    {id:'A002',villager_name:'李秀英',village_id:'V002',crop_type:'玉米',crop_area:5.2,crop_damage:'严重倒伏',crop_loss:12000,livestock_type:'猪',livestock_original:15,livestock_dead:3,barn_damage:'部分损毁',livestock_loss:6000,created_at:'2025-07-15T10:30:00Z',confirmed:false},
+  ],
+};
+
+// —— 北方江河凌汛防区（秋冬春三季）——
+DB.villages.push(
+  {id:'V006',name:'河湾村',township:'河湾乡',lng:104.62,lat:30.08,region:'north',disaster_type:'icejam',terrain_risk:'大河由南向北流弯道段，初春开江时冰凌易卡塞，历史凌汛多发区'},
+  {id:'V007',name:'开河滩村',township:'河湾乡',lng:104.88,lat:30.12,region:'north',disaster_type:'icejam',terrain_risk:'河道由低纬流向高纬，封冻早、开江晚，冰塞壅水高风险区'},
+  {id:'V008',name:'河湾镇社区',township:'河湾镇',lng:104.40,lat:29.96,region:'north',disaster_type:'icejam',terrain_risk:'镇区低洼沿河地带，开江期洪水易倒灌漫滩'},
+);
+DB.shelters.push(
+  {id:'S006',name:'河湾乡中心小学安置点',village_id:'V006',lng:104.63,lat:30.10,capacity:400,current_count:0},
+  {id:'S007',name:'开河滩村村委会安置点',village_id:'V007',lng:104.90,lat:30.14,capacity:260,current_count:0},
+  {id:'S008',name:'河湾镇文化中心安置点',village_id:'V008',lng:104.42,lat:29.98,capacity:350,current_count:0},
+);
+DB.rescue_teams.push(
+  {id:'T003',name:'河湾防凌抢险队',leader_name:'马守义',member_count:12,lng:104.60,lat:30.06,status:'standby'},
+);
+DB.users.push(
+  {id:'U010',username:'villager2',password:'123456',role:'villager',name:'马文军',phone:'13800138010',village_id:'V006'},
+  {id:'U011',username:'rescue2',password:'123456',role:'rescue',name:'防凌抢险队长·马守义',phone:'13900139003',team_id:'T003'},
+);
+DB.personnel.push(
+  {id:'P008',name:'马文军',phone:'13800138010',village_id:'V006',lng:104.6250,lat:30.0830,companion_count:3,injury_level:'none',material_needs:'保暖物资,食品',safety_status:'pending',region:'north'},
+  {id:'P009',name:'康桂荣',phone:'13800138011',village_id:'V007',lng:104.8830,lat:30.1230,companion_count:5,injury_level:'minor',material_needs:'急救药品,保暖物资',safety_status:'pending',region:'north'},
+  {id:'P010',name:'铁永刚',phone:'13800138012',village_id:'V008',lng:104.4030,lat:29.9630,companion_count:2,injury_level:'none',material_needs:'',safety_status:'safe',region:'north'},
+);
+
+// 关联村名
+DB.personnel.forEach(p=>{ const v=DB.villages.find(x=>x.id===p.village_id); p.village_name=v?v.name:''; p.township=v?v.township:''; });
+DB.agriculture_records.forEach(r=>{ const v=DB.villages.find(x=>x.id===r.village_id); r.village_name=v?v.name:''; r.township=v?v.township:''; });
+
+// 预置一条红色预警（含完整推演数据）
+(function(){
+  const t = Date.now() - 2*3600*1000 - 35*60000; // 2小时35分钟前
+  const derivation = runModel({
+    rainfallIntensity:45, cumulativeRainfall:120, forecastRainfall:90,
+    terrainRisk:'沟谷低洼地带，坡度35°，历史山洪多发区', population:200, villageName:'青龙山村落'
+  });
+  DB.warnings.push({
+    id:'W001', level:'red', title:'青龙山村落山洪灾害红色预警',
+    village_id:'V001', village_name:'青龙山村落', township:'青龙山乡',
+    terrain_risk:'沟谷低洼地带，坡度35°，历史山洪多发区',
+    publish_time:new Date(t).toISOString(), expire_time:new Date(t+12*3600*1000).toISOString(),
+    status:'active', derivation:derivation,
+    public_text:genPublicText('red','青龙山村落',derivation),
+    professional_text:genProText('青龙山村落',derivation),
+  });
+})();
+
+// 预置一条凌汛预警（开江期冰塞壅水，等级由推演引擎自动定级）
+(function(){
+  const t = Date.now() - 5*3600*1000; // 5小时前
+  const derivation = runIceModel({iceThickness:0.31, flowDensity:80, temp:-3, waterRise:0.8, population:320, villageName:'开河滩村', station:'IS-02'});
+  const lv = derivation.riskAssessment.level;
+  DB.warnings.push({
+    id:'W002', level:lv, title:'开河滩村凌汛灾害'+WC[lv].label, disaster_type:'icejam',
+    village_id:'V007', village_name:'开河滩村', township:'河湾乡',
+    terrain_risk:'河道由低纬流向高纬，封冻早、开江晚，冰塞壅水高风险区',
+    publish_time:new Date(t).toISOString(), expire_time:new Date(t+24*3600*1000).toISOString(),
+    status:'active', derivation:derivation,
+    public_text:derivation.publicText, professional_text:derivation.professionalText,
+  });
+})();
+
+// 预置一个已完成救援任务
+(function(){
+  const t = Date.now() - 5*3600*1000;
+  DB.rescue_tasks.push({
+    id:'T-W001', target_personnel_id:'P003', target_name:'王建国', target_lng:103.8108, target_lat:29.5842,
+    team_id:'T002', team_name:'云岭应急救援二队', injury_level:'severe', material_needs:'急救药品,饮用水,食品,保暖物资',
+    hazard_note:'山路湿滑，注意落石', forbidden_routes:'老路3km段塌方', optimal_route:'经青龙岭绕行至云岭村',
+    status:'completed', eta_minutes:240, created_at:new Date(t).toISOString(), completed_at:new Date(t+4*3600*1000).toISOString(),
+    village_name:'云岭村落', leader_name:'杨帆', member_count:6,
+  });
+})();
+
+/* ============================================================
+   Monid 多源数据（从 monidIntegrator.ts generateMockData 提取）
+   ============================================================ */
+const MONID_RAW = (function(){
+  const now = Date.now();
+  const minsAgo = m => new Date(now - m*60000).toISOString();
+  return [
+    {source:'weather',sourceName:'中国气象局',title:'暴雨红色预警信号',content:'青龙山村未来3小时降雨量将达50mm以上，伴有短时强降水，请注意防范山洪灾害。',location:'青龙山村',timestamp:minsAgo(8),reliability:0.95},
+    {source:'weather',sourceName:'水利部水文监测',title:'青龙溪水位超警',content:'青龙溪青龙山村段当前水位 285.6m，超警戒水位 0.6m，流量 82m³/s，呈上涨趋势。',location:'青龙山村',timestamp:minsAgo(5),reliability:0.98},
+    {source:'authoritative',sourceName:'县应急管理局',title:'关于启动防汛Ⅱ级应急响应的通知',content:'鉴于当前汛情严峻，经研究决定自即时起启动防汛Ⅱ级应急响应。请各乡镇立即组织危险区域群众转移。',location:'青龙山乡',timestamp:minsAgo(15),reliability:0.99},
+    {source:'authoritative',sourceName:'县水利局',title:'青龙山水库泄洪通报',content:'青龙山水库将于今日14时开闸泄洪，泄洪流量200m³/s，请下游沿河群众注意安全。',location:'青龙山水库',timestamp:minsAgo(20),reliability:0.97},
+    {source:'geo',sourceName:'OpenStreetMap',title:'青龙山村低洼路段积水',content:'青龙山村入口主干道高程282m，低于当前洪水位，预计积水深度1.2m，建议改道青龙岭转移路线。',location:'青龙山村',timestamp:minsAgo(3),reliability:0.85},
+    {source:'geo',sourceName:'高德地图路况',title:'S204省道交通管制',content:'S204省道青龙山村段因积水实施交通管制，预计恢复时间待定。',location:'S204省道',timestamp:minsAgo(12),reliability:0.9},
+    {source:'iot',sourceName:'青龙溪水位计WS-07',title:'水位遥测告警',content:'传感器ID:WS-07，当前水位285.7m（超警0.7m），10分钟内上涨0.15m，触发自动告警。',location:'青龙溪中游',timestamp:minsAgo(2),reliability:0.99},
+    {source:'iot',sourceName:'雨量筒RG-03',title:'雨强遥测数据',content:'传感器ID:RG-03，当前雨强45mm/h，1小时累计38mm，2小时累计72mm。',location:'青龙山村',timestamp:minsAgo(1),reliability:0.99},
+    {source:'social',sourceName:'微博',title:'青龙山村村民求救',content:'我是青龙山村三组的，家里进水了已经到腰了，老人腿脚不方便下不了楼，请求救援！',location:'青龙山村三组',timestamp:minsAgo(6),reliability:0.7},
+    {source:'social',sourceName:'小红书',title:'转移求助帖',content:'青龙山村这边水还在涨，附近有没有救生艇？家里有小孩急需转移！',location:'青龙山村',timestamp:minsAgo(4),reliability:0.65},
+    {source:'social',sourceName:'X (Twitter)',title:'Qinglong village flood SOS',content:'Heavy flooding in Qinglong village area. Multiple families trapped. Need boats and supplies urgently. #FloodRescue',location:'青龙山村',timestamp:minsAgo(10),reliability:0.6},
+    {source:'social',sourceName:'抖音',title:'现场视频上报',content:'青龙山村洪水实拍，水已经漫过一楼，很多人在二楼等待救援，物资紧缺。',location:'青龙山村',timestamp:minsAgo(7),reliability:0.68},
+    {source:'weather',sourceName:'国家凌汛监测中心',title:'北方河流进入开江期',content:'河湾村至开河滩段流凌密度已达65%-80%，冰厚0.31-0.42m，气温持续回升，预计48小时内武开河，重点防范弯道冰塞壅水。',location:'河湾村段',timestamp:minsAgo(18),reliability:0.96},
+    {source:'authoritative',sourceName:'省防汛抗旱指挥部',title:'关于做好开江期防凌工作的通知',content:'请沿河各乡镇立即组织滩区群众转移，封闭危险堤段道路，防凌抢险队进入战备状态。',location:'河湾乡',timestamp:minsAgo(22),reliability:0.99},
+    {source:'iot',sourceName:'冰厚遥测站 IS-02',title:'冰塞壅水告警',content:'传感器ID:IS-02，开河滩段水位超警0.8m，1小时内上涨0.12m，流凌密度80%，触发冰塞高风险告警。',location:'开河滩段',timestamp:minsAgo(2),reliability:0.99},
+  ];
+})();
+
+// GLM-5.1 研判简报（按类别分组后生成）
+const MONID_BRIEFINGS = (function(){
+  const catLabel = {weather:'气象水文监测',authoritative:'权威政务通报',geo:'地理交通态势',iot:'物联网遥测',social:'社交舆情研判'};
+  const grouped = {};
+  MONID_RAW.forEach(it=>{ (grouped[it.source]=grouped[it.source]||[]).push(it); });
+  const locations = new Set(MONID_RAW.map(i=>i.location));
+  const result = [];
+  const order = ['weather','authoritative','geo','iot','social'];
+  // 紧急度判定
+  function urg(t){ if(/求救|SOS|紧急|生命|决堤|溃坝|被困/.test(t))return 'high'; if(/转移|预警|上涨|超警|危险|告警/.test(t))return 'medium'; return 'low'; }
+  const suppliesMap = {
+    social:['救生艇','饮用水','食物'],
+    iot:[],
+    weather:[],
+    geo:[],
+    authoritative:[],
+  };
+  order.forEach(cat=>{
+    const items = grouped[cat]||[];
+    if(!items.length) return;
+    const allText = items.map(i=>i.title+i.content).join(' ');
+    const cross = ['weather','authoritative','geo','iot','social'].filter(c=>c!==cat)
+      .some(oc=> (grouped[oc]||[]).some(oi=> locations.has(oi.location)));
+    const avg = items.reduce((s,i)=>s+i.reliability,0)/items.length;
+    const confidence = Math.min(Math.round((cross?0.7:0.4)+avg*0.3)*100,95);
+    result.push({
+      id:'BRIEF-'+cat, category:cat, categoryLabel:catLabel[cat],
+      title:items[0].title, location:items[0].location||'青龙山村',
+      urgency:urg(allText), suppliesNeeded:suppliesMap[cat].length?suppliesMap[cat]:null,
+      confidence, crossVerified:cross, sources:[...new Set(items.map(i=>i.sourceName))],
+      timestamp:new Date().toISOString(),
+      summary:briefSummary(cat,items,'青龙山村',cross),
+    });
+  });
+  return result;
+})();
+function briefSummary(cat,items,region,cross){
+  const note = cross?'该情报已经多源交叉验证，可信度较高。':'该情报暂为单一来源，建议进一步核实。';
+  if(cat==='weather') return '据气象水文数据监测，'+region+'及周边区域近期降雨持续。GLM-5.1 综合分析雷达回波和雨量筒数据，预计未来3小时降雨量将进一步增大，建议密切关注水情变化。'+note;
+  if(cat==='authoritative') return (items[0].sourceName||'应急管理部门')+'已发布官方通报。GLM-5.1 对通报内容进行结构化提取，关键信息已同步至指挥调度系统。'+note;
+  if(cat==='geo') return '地理交通数据表明，'+region+'部分低洼路段可能出现积水。结合高程数据（DEM）分析，GLM-5.1 已标注高风险区域和可通行转移路线。'+note;
+  if(cat==='iot') return '物联网传感器遥测数据显示，河道水位持续上涨。GLM-5.1 正实时比对历史阈值，触发自动告警。'+note;
+  if(cat==='social') return '社交媒体舆情监测发现'+region+'相关灾情讨论活跃。GLM-5.1 已过滤谣言，提取真实求救信号并分类标记紧急程度。'+note;
+  return 'GLM-5.1 已完成数据分析。'+note;
+}
+
+// 舆情关键词频次（从原始数据统计）
+const MONID_KEYWORDS = (function(){
+  const kws = ['洪水','求救','转移','被困','水位','降雨','决堤','救生艇','物资','断水'];
+  const map = {};
+  MONID_RAW.forEach(it=>{ const t = it.title+it.content; kws.forEach(k=>{ if(t.includes(k)) map[k]=(map[k]||0)+1; }); });
+  return kws.filter(k=>map[k]).map(k=>({word:k,count:map[k]})).sort((a,b)=>b.count-a.count);
+})();
+
+const SENTIMENT = {
+  totalMentions: MONID_RAW.length,
+  rescueRequests: MONID_RAW.filter(i=>i.source==='social' && /求救|被困|SOS|紧急/.test(i.content)).length,
+  rumorAlerts: MONID_RAW.filter(i=>i.reliability<0.5 && /传言|听说|据说/.test(i.content)).length,
+  officialNotices: MONID_RAW.filter(i=>i.source==='authoritative').length,
+  sentimentTrend:'rising', topKeywords:MONID_KEYWORDS, briefings:MONID_BRIEFINGS,
+  lastUpdate:new Date().toISOString(),
+};
+
+/* ============================================================
+   OpenDeploy 边缘节点（从 openDeployHook.ts initEdgeNodes 提取）
+   ============================================================ */
+const NOW = Date.now();
+const EDGE_NODES = [
+  {id:'EDGE-001',name:'救援一队-便携终端',type:'rescue_device',status:'online',lastHeartbeat:new Date(NOW-30000).toISOString(),modelVersion:'v2.3.1',location:'青龙山村',pendingSync:0,batteryLevel:78},
+  {id:'EDGE-002',name:'救援二队-便携终端',type:'rescue_device',status:'syncing',lastHeartbeat:new Date(NOW-120000).toISOString(),modelVersion:'v2.3.0',location:'云岭村',pendingSync:4,batteryLevel:52},
+  {id:'EDGE-003',name:'青龙山乡-边缘服务器',type:'edge_server',status:'online',lastHeartbeat:new Date(NOW-10000).toISOString(),modelVersion:'v2.3.1',location:'乡政府机房',pendingSync:0,batteryLevel:null},
+  {id:'EDGE-004',name:'青龙山村-信息亭',type:'village_kiosk',status:'offline',lastHeartbeat:new Date(NOW-600000).toISOString(),modelVersion:'v2.2.5',location:'村委会',pendingSync:12,batteryLevel:null},
+];
+const DEPLOY_HISTORY = []; // 运行时可追加
+
+/* ============================================================
+   八步模型链推演引擎（移植自 warningModel.ts）
+   ============================================================ */
+function runModel(p){
+  const tr = p.terrainRisk || '';
+  // ① 降雨输入
+  const rainfall = {intensity:p.rainfallIntensity, cumulative:p.cumulativeRainfall, forecast:p.forecastRainfall, dataSource:'雷达短临预报+地面雨量站融合'};
+  // ② 产汇流 SCS-CN
+  let cn = 75;
+  if(/坡度|陡坡/.test(tr)) cn = 82;
+  if(/泥石流|高危/.test(tr)) cn = 88;
+  const S = 25400/cn - 254;
+  const P = rainfall.cumulative + rainfall.forecast;
+  const runoffDepth = P > 0.2*S ? Math.pow(P - 0.2*S, 2)/(P + 0.8*S) : 0;
+  const area = 0.5;
+  const runoffCoeff = runoffDepth/Math.max(P,1);
+  const peakFlow = Math.max(0, Math.round(runoffCoeff*rainfall.intensity*area*1000/3.6));
+  const slopeFactor = /陡坡/.test(tr)?0.7 : /坡度/.test(tr)?0.85 : 1.0;
+  const convergenceTime = Math.max(5, Math.round((20 + 100/Math.max(rainfall.intensity,1))*slopeFactor));
+  const yieldTime = Math.round(convergenceTime*0.4);
+  const runoff = {curveNumber:cn, peakFlow, convergenceTime, yieldTime};
+  // ③ 沟道演进
+  const peakArrivalTime = Math.round(convergenceTime*0.65);
+  const peakVelocity = /陡坡/.test(tr)?5.2:3.8;
+  const depthFactor = /陡坡/.test(tr)?0.002:0.0015;
+  const calcDepth = f => Math.min(5, Math.round(f*depthFactor*100)/100);
+  const sections = [
+    {name:'上游断面（溪源汇合口）', depth:calcDepth(peakFlow*0.6), flow:Math.round(peakFlow*0.6)},
+    {name:'中游断面（村组驻地段）', depth:calcDepth(peakFlow*0.85), flow:Math.round(peakFlow*0.85)},
+    {name:'下游断面（出沟口）', depth:calcDepth(peakFlow), flow:peakFlow},
+  ];
+  const channelRouting = {peakArrivalTime, peakVelocity, sections};
+  // ④ 淹没分析
+  const inunArea = Math.round(peakVelocity*peakArrivalTime*0.0008*100)/100;
+  const maxDepth = sections[1].depth;
+  let depthDist = '';
+  if(maxDepth>2) depthDist='深度淹没区（>2m）占35%，中深度（1-2m）占40%，浅淹没（<1m）占25%';
+  else if(maxDepth>1) depthDist='深度淹没区（>2m）占15%，中深度（1-2m）占45%，浅淹没（<1m）占40%';
+  else depthDist='浅淹没区（<1m）占70%，中深度（1-2m）占30%';
+  const inundation = {area:inunArea, maxDepth, depthDistribution:depthDist};
+  // ⑤ 风险评估
+  const hazard = Math.min(100, Math.round(rainfall.intensity*0.35 + rainfall.cumulative*0.25 + maxDepth*12));
+  const exposure = Math.min(100, Math.round(Math.min(p.population*0.3,60) + inunArea*10));
+  let vuln = 40;
+  if(/高危|频发/.test(tr)) vuln=85; else if(/隐患|多发/.test(tr)) vuln=70; else if(/坡度|陡坡/.test(tr)) vuln=60;
+  const vulnerability = Math.min(100, vuln);
+  const riskScore = Math.round(hazard*0.4 + exposure*0.35 + vulnerability*0.25);
+  let level='blue';
+  if(riskScore>=75) level='red'; else if(riskScore>=55) level='orange'; else if(riskScore>=35) level='yellow';
+  const riskAssessment = {hazard, exposure, vulnerability, riskScore, level};
+  // ⑥⑦ 转移任务
+  const personCount = level==='red'?p.population : level==='orange'?Math.round(p.population*0.7) : level==='yellow'?Math.round(p.population*0.3):0;
+  const transferTask = {
+    personCount,
+    routes:['沿村道向'+p.villageName+'北侧高地撤离（海拔+50m以上）','经沟道东侧山路转移至安置点'],
+    shelterName:p.villageName+'安置点', responsible:p.villageName+'村组长',
+  };
+  return {rainfall, runoff, channelRouting, inundation, riskAssessment, transferTask,
+    feedbackCorrection:{modelVersion:'FG-Model v2.1', lastCalibrated:'2025-06-01', accuracyNote:'基于近三年历史灾害数据校正，洪峰到达时间误差±15分钟，淹没范围误差±12%'}};
+}
+function genPublicText(level, vname, d){
+  const lt = level==='red'?'红色（极高风险）':level==='orange'?'橙色（中高风险）':level==='yellow'?'黄色（中风险）':'蓝色（低风险）';
+  const act = level==='red'?'请立即撤离！':level==='orange'?'请做好撤离准备，老人小孩优先转移！':level==='yellow'?'请密切关注险情变化，做好转移准备。':'请留意后续预警信息。';
+  return '【'+lt+'预警】'+vname+'区域存在山洪灾害风险。\n预计洪峰将于约'+d.channelRouting.peakArrivalTime+'分钟后抵达本区域，最大水深可能达'+d.inundation.maxDepth+'米。\n'+act+'\n转移路线：'+d.transferTask.routes[0]+'。\n安置点：'+d.transferTask.shelterName+'。\n避险原则：向沟道两侧高地撤离，切勿顺河道方向奔跑。';
+}
+function genProText(vname, d){
+  const r=d.rainfall, ro=d.runoff, ch=d.channelRouting, inun=d.inundation, risk=d.riskAssessment;
+  return '【专业溯源报告 - '+vname+'】\n一、降雨输入：数据源-'+r.dataSource+'，当前雨强'+r.intensity+'mm/h，累计'+r.cumulative+'mm，预报'+r.forecast+'mm。\n二、产汇流：SCS-CN曲线数='+ro.curveNumber+'，估算洪峰流量'+ro.peakFlow+'m³/s，产流时间'+ro.yieldTime+'min，汇流时间'+ro.convergenceTime+'min。\n三、沟道演进：洪峰预计'+ch.peakArrivalTime+'min后抵达，洪峰流速'+ch.peakVelocity+'m/s。断面数据：'+ch.sections.map(s=>s.name+'水深'+s.depth+'m/流量'+s.flow+'m³/s').join('；')+'。\n四、淹没分析：预计淹没面积'+inun.area+'km²，最大水深'+inun.maxDepth+'m。'+inun.depthDistribution+'。\n五、风险评估：危险性'+risk.hazard+'、暴露度'+risk.exposure+'、脆弱性'+risk.vulnerability+'，综合风险分'+risk.riskScore+'（'+risk.level.toUpperCase()+'）。\n六、模型版本：'+d.feedbackCorrection.modelVersion+'，'+d.feedbackCorrection.accuracyNote+'。';
+}
+
+/* ============================================================
+   凌汛推演引擎（秋冬春 · 开江期冰塞壅水）
+   ============================================================ */
+function runIceModel(p){
+  // ① 冰情输入（卫星遥感 + 冰厚遥测站 + 水文站融合）
+  const ice = {iceThickness:p.iceThickness, flowDensity:p.flowDensity, temp:p.temp, waterRise:p.waterRise, dataSource:'卫星遥感+冰厚遥测站+水文站融合'};
+  // ② 热力评估（气温回升 → 武开河风险）
+  const warmFactor = p.temp>=0?1:(p.temp>=-5?0.75:0.5);
+  // ③ 冰塞/冰坝壅水评估（流凌密度 × 冰厚 × 水位超警）
+  const jamRisk = Math.min(100, Math.round(p.flowDensity*0.6 + p.iceThickness*80 + p.waterRise*30));
+  // ④ 开江时间预估
+  const breakUpHours = Math.max(6, Math.round(48*warmFactor));
+  // ⑤ 淹没分析
+  const maxDepth = Math.min(6, Math.round((p.iceThickness*1.8 + p.waterRise*1.5)*10)/10);
+  const inunArea = Math.round((2.5 + p.waterRise*3 + p.iceThickness*2)*10)/10;
+  const depthDist = maxDepth>3?'深度淹没区（>2m）占40%，中深度（1-2m）占35%，浅淹没（<1m）占25%':maxDepth>1.5?'深度淹没区（>2m）占20%，中深度（1-2m）占45%，浅淹没（<1m）占35%':'浅淹没区（<1m）占65%，中深度（1-2m）占35%';
+  const inundation = {area:inunArea, maxDepth, depthDistribution:depthDist};
+  // ⑥ 风险评估
+  const hazard = Math.min(100, Math.round(jamRisk*0.7 + warmFactor*30));
+  const exposure = Math.min(100, Math.round(Math.min(p.population*0.3,60) + inunArea*8));
+  const vulnerability = 70; // 北方沿河村落房屋抗涝能力普遍偏低
+  const riskScore = Math.round(hazard*0.4 + exposure*0.35 + vulnerability*0.25);
+  let level='blue';
+  if(riskScore>=75) level='red'; else if(riskScore>=55) level='orange'; else if(riskScore>=35) level='yellow';
+  const riskAssessment = {hazard, exposure, vulnerability, riskScore, level};
+  // ⑦ 转移任务
+  const personCount = level==='red'?p.population : level==='orange'?Math.round(p.population*0.7) : level==='yellow'?Math.round(p.population*0.3):0;
+  const transferTask = {
+    personCount,
+    routes:['迅速撤离至河道堤防高程以上预设安置点（海拔+20m以上）','远离弯道卡塞段与历史决口段，严禁在冰面上行走或围观'],
+    shelterName:p.villageName+'安置点', responsible:p.villageName+'村支书兼防凌责任人',
+  };
+  const d = {
+    ice,
+    rainfall:{intensity:0, cumulative:0, forecast:0, dataSource:ice.dataSource},
+    runoff:{curveNumber:'-', peakFlow:'-', convergenceTime:breakUpHours*60, yieldTime:'-'},
+    channelRouting:{peakArrivalTime:breakUpHours, peakVelocity:2.1, sections:[
+      {name:'流凌进口断面', depth:Math.round(maxDepth*0.6*10)/10, flow:'流凌'},
+      {name:'弯道卡塞断面', depth:maxDepth, flow:'冰塞壅水'},
+      {name:'滩区漫溢出流断面', depth:Math.round(maxDepth*0.8*10)/10, flow:'漫滩'},
+    ]},
+    inundation, riskAssessment, transferTask,
+    iceModel:true,
+    feedbackCorrection:{modelVersion:'FG-IceModel v1.2', lastCalibrated:'2026-03-15', accuracyNote:'基于近五年凌汛灾例校正，开江时间误差±6小时，冰塞位置识别准确率92%'},
+  };
+  d.publicText = genIcePublicText(level, p.villageName, d);
+  d.professionalText = genIceProText(p.villageName, d);
+  return d;
+}
+function genIcePublicText(level, vname, d){
+  const lt = level==='red'?'红色（极高风险）':level==='orange'?'橙色（中高风险）':level==='yellow'?'黄色（中风险）':'蓝色（低风险）';
+  const act = level==='red'?'请立即撤离！':level==='orange'?'请做好撤离准备，老人小孩优先转移！':level==='yellow'?'请密切关注冰情水情变化，做好转移准备。':'请留意后续预警信息。';
+  return '【'+lt+'凌汛预警】'+vname+'河段存在冰塞壅水风险。\n当前流凌密度 '+d.ice.flowDensity+'%，冰厚 '+d.ice.iceThickness+'m，水位超警 '+d.ice.waterRise+'m。\n预计约 '+d.channelRouting.peakArrivalTime+' 小时内开江，最大漫滩水深可能达 '+d.inundation.maxDepth+' 米。\n'+act+'\n避险要点：迅速撤离至堤防高程以上安置点，严禁在冰面上行走、玩耍或围观，远离弯道卡塞段与历史决口段。';
+}
+function genIceProText(vname, d){
+  const i=d.ice, ch=d.channelRouting, inun=d.inundation, risk=d.riskAssessment;
+  return '【专业溯源报告 - '+vname+'凌汛】\n一、冰情输入：数据源-'+i.dataSource+'，冰厚'+i.iceThickness+'m，流凌密度'+i.flowDensity+'%，气温'+i.temp+'℃，水位超警'+i.waterRise+'m。\n二、热力评估：气温回升系数'+(i.temp>=0?1:(i.temp>=-5?0.75:0.5))+'，武开河风险'+(i.temp>=-5?'高':'中')+'，预计'+ch.peakArrivalTime+'小时内开江。\n三、冰塞壅水：弯道卡塞风险分'+Math.round(i.flowDensity*0.6+i.iceThickness*80+i.waterRise*30)+'，壅水涨率约0.12m/h。断面数据：'+ch.sections.map(s=>s.name+s.flow+'水深'+s.depth+'m').join('；')+'。\n四、淹没分析：预计淹没面积'+inun.area+'km²，最大水深'+inun.maxDepth+'m。'+inun.depthDistribution+'。\n五、风险评估：危险性'+risk.hazard+'、暴露度'+risk.exposure+'、脆弱性'+risk.vulnerability+'，综合风险分'+risk.riskScore+'（'+risk.level.toUpperCase()+'）。\n六、模型版本：'+d.feedbackCorrection.modelVersion+'，'+d.feedbackCorrection.accuracyNote+'。';
+}
+
+/* ============================================================
+   登录页
+   ============================================================ */
+const ROLES = [
+  {role:'admin',name:'防汛抗旱指挥部',desc:'指挥调度、预警发布、全局监控',icon:IC.shield,color:'#005288',grad:'linear-gradient(135deg,#003D66,#0070B8)',user:'admin',pwd:'admin123'},
+  {role:'villager',name:'辖区村民',desc:'避险登记、灾情上报、救援请求',icon:IC.home,color:'#27AE60',grad:'linear-gradient(135deg,#1B7A3F,#2ECC71)',user:'villager1',pwd:'123456'},
+  {role:'rescue',name:'应急救援队伍',desc:'接收任务、导航救援、轨迹上报',icon:IC.lifebuoy,color:'#F57C00',grad:'linear-gradient(135deg,#E65100,#FB8C00)',user:'rescue1',pwd:'123456'},
+  {role:'agriculture',name:'农业灾情统计员',desc:'农业灾情登记、损失汇总统计',icon:IC.sprout,color:'#1976D2',grad:'linear-gradient(135deg,#1565C0,#42A5F5)',user:'agriculture',pwd:'agri123'},
+];
+let selectedRole = null;
+let currentUser = null;
+
+function renderLogin(){
+  const g = $('roleGrid');
+  g.innerHTML = ROLES.map(r=>'<button class="role-card" data-role="'+r.role+'" onclick="pickRole(\''+r.role+'\')">'+
+    '<div class="role-icon" style="background:'+r.grad+'">'+r.icon+'</div>'+
+    '<div style="flex:1;min-width:0;"><div class="role-name">'+r.name+'</div><div class="role-desc">'+r.desc+'</div></div></button>').join('');
+}
+function pickRole(role){
+  selectedRole = role;
+  const r = ROLES.find(x=>x.role===role);
+  $('loginUser').value = r.user; $('loginPwd').value = r.pwd;
+  $('loginErr').classList.add('hidden');
+  document.querySelectorAll('.role-card').forEach(c=>c.classList.toggle('active', c.dataset.role===role));
+}
+function doLogin(){
+  if(!selectedRole){ showLoginErr('请先选择登录角色'); return; }
+  const u = $('loginUser').value.trim(), p = $('loginPwd').value;
+  if(!u||!p){ showLoginErr('请输入用户名和密码'); return; }
+  const user = DB.users.find(x=>x.username===u && x.password===p && x.role===selectedRole);
+  if(!user){ showLoginErr('登录失败，请检查账号密码'); return; }
+  currentUser = user;
+  $('loginErr').classList.add('hidden');
+  enterRole(user);
+}
+function showLoginErr(msg){ const e=$('loginErr'); e.className=''; e.innerHTML=IC.alert+'<span>'+msg+'</span>'; }
+function logout(){ currentUser=null; selectedRole=null; $('loginUser').value=''; $('loginPwd').value=''; document.querySelectorAll('.role-card').forEach(c=>c.classList.remove('active')); show('page-login'); }
+function enterRole(user){
+  if(user.role==='admin'){ $('adminSideName').textContent=user.name; $('adminSideAcc').textContent=user.username; $('adminTopName').textContent=user.name; show('page-admin'); adminNav('warning'); }
+  else if(user.role==='villager'){ $('villagerName').textContent=user.name; show('page-villager'); villagerNav('home'); }
+  else if(user.role==='rescue'){ $('rescueName').textContent=user.name; show('page-rescue'); rescueNav('list'); }
+  else if(user.role==='agriculture'){ $('agriName').textContent=user.name; show('page-agriculture'); agriNav('form'); }
+}
+
+/* ============================================================
+   管理端菜单
+   ============================================================ */
+const ADMIN_MENUS = [
+  {key:'warning',label:'预警发布',icon:IC.alert},
+  {key:'season',label:'四季灾害日历',icon:IC.clock},
+  {key:'dashboard',label:'指挥调度大屏',icon:IC.layout},
+  {key:'intelligence',label:'智能情报中心',icon:IC.radar},
+  {key:'personnel',label:'人员台账',icon:IC.users},
+  {key:'rescue',label:'救援调度',icon:IC.lifebuoy},
+];
+let adminActive = 'warning';
+function adminNav(key){
+  adminActive = key;
+  $('adminMenu').innerHTML = ADMIN_MENUS.map(m=>'<div class="menu-item'+(m.key===key?' active':'')+'" onclick="adminNav(\''+m.key+'\')"><span style="flex-shrink:0;">'+m.icon+'</span><span>'+m.label+'</span></div>').join('');
+  const c = $('adminContent');
+  if(key==='warning') renderAdminWarning(c);
+  else if(key==='season') renderAdminSeason(c);
+  else if(key==='dashboard') renderAdminDashboard(c);
+  else if(key==='intelligence') renderAdminIntel(c);
+  else if(key==='personnel') renderAdminPersonnel(c);
+  else if(key==='rescue') renderAdminRescue(c);
+  c.scrollTop = 0;
+}
+
+/* ============================================================
+   管理端 - 四季灾害日历（全年水灾害覆盖：夏汛 + 冬凌）
+   ============================================================ */
+function renderAdminSeason(c){
+  const month = new Date().getMonth()+1;
+  let seasonName;
+  if(month>=11||month<=3) seasonName='防凌期';
+  else if(month===10) seasonName='深秋';
+  else if(month===4) seasonName='汛前过渡';
+  else seasonName='主汛期';
+  const cur = SEASON_CALENDAR.find(s=>s.m===month) || SEASON_CALENDAR[0];
+  c.innerHTML =
+    '<div style="padding:20px; display:flex; flex-direction:column; gap:16px;">' +
+    '<div class="card" style="padding:20px;">' +
+      '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">' +
+        '<h2 style="font-size:1.05rem; font-weight:700; display:flex; align-items:center; gap:8px;">'+IC.clock.replace('currentColor','var(--primary)')+'<span style="color:var(--primary);">全年水灾害日历</span></h2>' +
+        '<span class="tag" style="background:rgba(0,82,136,.1); color:var(--primary);">当前：'+month+'月 · '+seasonName+'</span>' +
+      '</div>' +
+      '<div style="display:grid; grid-template-columns:repeat(6,1fr); gap:8px;">' +
+      SEASON_CALENDAR.map(s=>{
+        const isCur = s.m===month;
+        return '<div style="border:1.5px solid '+(isCur?'var(--primary)':'var(--border)')+'; border-radius:10px; padding:10px; '+(isCur?'background:rgba(0,82,136,.05);':'')+'">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><span style="font-size:.82rem; font-weight:700; '+(isCur?'color:var(--primary);':'')+'">'+s.d+'</span>'+(isCur?'<span class="tag" style="background:var(--primary); color:#fff;">当前</span>':'')+'</div>' +
+          '<div style="display:flex; flex-wrap:wrap; gap:4px;">'+s.active.map(k=>{ const dt=DTYPE[k]; return '<span class="tag" style="background:'+dt.color+'18; color:'+dt.color+'; font-weight:700;">'+dt.label+'</span>'; }).join('')+'</div>' +
+          '<div style="font-size:.64rem; color:var(--ink-sub); margin-top:6px; line-height:1.5;">'+s.note+'</div>' +
+        '</div>';
+      }).join('') +
+      '</div>' +
+      '<div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:14px; padding-top:14px; border-top:1px solid var(--border); align-items:center;">' +
+        '<span style="font-size:.72rem; color:var(--ink-sub); margin-right:4px;">图例</span>' +
+        Object.entries(DTYPE).map(([k,dt])=>'<span class="tag" style="background:'+dt.color+'18; color:'+dt.color+';">'+dt.label+'</span>').join('') +
+      '</div>' +
+    '</div>' +
+    '<div class="card" style="padding:14px 20px; display:flex; align-items:center; gap:10px;">' +
+      IC.clock.replace('currentColor','var(--warn-orange)') +
+      '<div style="font-size:.84rem;"><b>'+month+'月防御重点：</b><span style="color:var(--ink-sub);">'+cur.note+'</span></div>' +
+    '</div>' +
+    '</div>';
+}
+
+/* ============================================================
+   管理端 - 预警发布页（八步模型链推演）
+   ============================================================ */
+const WP = { villageId:'V001', intensity:35, cumulative:80, forecast:120, population:200, iceThickness:0.42, flowDensity:65, temp:-3, waterRise:0.8 };
+let wpResult = null, wpVisibleSteps = 0, wpAnimTimer = null;
+
+function renderAdminWarning(c){
+  c.innerHTML =
+    '<div style="padding:20px;">' +
+    '<div style="display:grid; grid-template-columns:1fr 2fr; gap:16px;">' +
+    // 左侧参数
+    '<div class="card" style="padding:20px;">' +
+      '<h2 style="font-size:1rem; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:8px; color:var(--ink);">'+IC.cloud+'<span style="color:var(--primary);">模型链推演参数（按灾种自适应）</span></h2>' +
+      '<div style="display:flex; flex-direction:column; gap:14px;">' +
+        fieldSelect('目标村组', 'wpVillage', DB.villages.map(v=>'<option value="'+v.id+'"'+(v.id===WP.villageId?' selected':'')+'>'+v.name+'（'+v.township+'）</option>').join('')) +
+        wpDTypeBar() +
+        wpParamPanel() +
+        '<button class="btn-accent" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px;" onclick="wpSimulate()">'+IC.play+'推演预览</button>' +
+        '<div id="wpMsg"></div>' +
+      '</div>' +
+    '</div>' +
+    // 右侧结果
+    '<div id="wpResult">' +
+      '<div class="card" style="padding:32px; text-align:center; color:var(--ink-sub); min-height:200px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px;">' +
+        IC.cloud.replace('width="20"','width="40"').replace('height="20"','height="40"') +
+        '<span>填写降雨参数并点击「推演预览」查看模型链结果</span>' +
+      '</div>' +
+    '</div>' +
+    '</div>' +
+    // 预警列表
+    '<div class="card" style="padding:20px; margin-top:20px;">' +
+      '<h3 style="font-size:1rem; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:8px;">'+IC.alert+'<span style="color:var(--warn-orange);">预警记录 ('+DB.warnings.length+')</span></h3>' +
+      '<div style="overflow-x:auto;"><table><thead><tr><th>等级</th><th>标题</th><th>村组</th><th>发布时间</th><th>状态</th></tr></thead><tbody id="wpList"></tbody></table></div>' +
+    '</div>' +
+    '</div>';
+  renderWpList();
+}
+function fieldNum(label, id, val){
+  return '<div><label style="display:block; font-size:.82rem; color:var(--ink-sub); margin-bottom:6px;">'+label+'</label><input id="'+id+'" type="number" class="input-field" value="'+val+'" onchange="WP.'+id.replace('wp','').toLowerCase().charAt(0)+id.slice(3)+'=Number(this.value)||0"></div>';
+}
+function fieldSelect(label, id, opts){
+  return '<div><label style="display:block; font-size:.82rem; color:var(--ink-sub); margin-bottom:6px;">'+label+'</label><select id="'+id+'" class="input-field" onchange="WP.villageId=this.value; renderAdminWarning($(\'adminContent\'))">'+opts+'</select></div>';
+}
+function wpVillage(){ return DB.villages.find(x=>x.id===WP.villageId); }
+function wpDTypeBar(){
+  const v = wpVillage(); const dt = DTYPE[(v&&v.disaster_type)||'flashflood'];
+  return '<div style="border:1px solid '+dt.color+'40; background:'+dt.color+'10; border-radius:8px; padding:8px 12px;"><div style="display:flex; align-items:center; gap:6px; font-size:.82rem; font-weight:700; color:'+dt.color+';"><span style="width:10px; height:10px; border-radius:50%; background:'+dt.color+';"></span><span>'+dt.label+' · '+dt.season+'</span></div><div style="font-size:.68rem; color:var(--ink-sub); margin-top:3px; line-height:1.5;">'+dt.desc+'</div></div>';
+}
+function wpParamPanel(){
+  const v = wpVillage();
+  if(v && v.disaster_type==='icejam'){
+    return fieldNum('冰厚 (m)', 'wpIceThickness', WP.iceThickness) +
+      fieldNum('流凌密度 (%)', 'wpFlowDensity', WP.flowDensity) +
+      fieldNum('气温 (℃)', 'wpTemp', WP.temp) +
+      fieldNum('水位超警 (m)', 'wpWaterRise', WP.waterRise) +
+      fieldNum('影响人口 (人)', 'wpPopulation', WP.population);
+  }
+  return fieldNum('降雨强度 (mm/h)', 'wpIntensity', WP.intensity) +
+    fieldNum('累计降雨量 (mm)', 'wpCumulative', WP.cumulative) +
+    fieldNum('预报降雨量 (mm)', 'wpForecast', WP.forecast) +
+    fieldNum('影响人口 (人)', 'wpPopulation', WP.population);
+}
+function renderWpList(){
+  const el = $('wpList');
+  if(!el) return;
+  el.innerHTML = DB.warnings.map(w=>{
+    const v = DB.villages.find(x=>x.id===w.village_id);
+    return '<tr><td>'+warnBadge(w.level,'sm')+'</td><td style="font-weight:500; color:var(--ink);">'+w.title+'</td><td style="color:var(--ink-sub);">'+(v?v.name:'-')+'</td><td style="color:var(--ink-sub); font-size:.82rem;">'+fmtTime(w.publish_time)+'</td><td><span class="tag" style="background:'+(w.status==='active'?'rgba(39,174,96,.1)':'var(--bg)')+'; color:'+(w.status==='active'?'var(--safe)':'var(--ink-sub)')+';">'+(w.status==='active'?'生效中':w.status)+'</span></td></tr>';
+  }).join('');
+}
+function wpSimulate(){
+  WP.villageId = $('wpVillage').value;
+  if($('wpIceThickness')) WP.iceThickness = Number($('wpIceThickness').value)||0;
+  if($('wpFlowDensity')) WP.flowDensity = Number($('wpFlowDensity').value)||0;
+  if($('wpTemp')) WP.temp = Number($('wpTemp').value)||0;
+  if($('wpWaterRise')) WP.waterRise = Number($('wpWaterRise').value)||0;
+  WP.intensity = Number($('wpIntensity').value)||0;
+  WP.cumulative = Number($('wpCumulative').value)||0;
+  WP.forecast = Number($('wpForecast').value)||0;
+  WP.population = Number($('wpPopulation').value)||0;
+  const v = DB.villages.find(x=>x.id===WP.villageId);
+  if(!v){ wpShowMsg('请先选择村组','err'); return; }
+  if(v.disaster_type==='icejam'){
+    wpResult = runIceModel({iceThickness:WP.iceThickness, flowDensity:WP.flowDensity, temp:WP.temp, waterRise:WP.waterRise, population:WP.population, villageName:v.name, station:'IS-02'});
+  } else {
+    wpResult = runModel({rainfallIntensity:WP.intensity, cumulativeRainfall:WP.cumulative, forecastRainfall:WP.forecast, terrainRisk:v.terrain_risk, population:WP.population, villageName:v.name});
+  }
+  wpVisibleSteps = 0;
+  if(wpAnimTimer) clearInterval(wpAnimTimer);
+  renderWpResult();
+  // 八步逐步显现
+  let step = 0;
+  wpAnimTimer = setInterval(()=>{
+    step++; wpVisibleSteps = step;
+    const chain = $('wpChain');
+    if(chain){ chain.querySelectorAll('.model-step').forEach((el,i)=>{ el.style.display = i<wpVisibleSteps?'block':'none'; }); }
+    if(step>=8){ clearInterval(wpAnimTimer); wpAnimTimer=null; }
+  }, 500);
+}
+function wpShowMsg(msg,type){
+  const m = $('wpMsg'); if(!m) return;
+  m.innerHTML = '<div style="font-size:.82rem; padding:10px 12px; border-radius:8px; display:flex; align-items:center; gap:6px; background:'+(type==='err'?'rgba(230,32,32,.1)':'rgba(39,174,96,.1)')+'; color:'+(type==='err'?'var(--warn-red)':'var(--safe)')+';">'+IC.alert+'<span>'+msg+'</span></div>';
+}
+function renderWpResult(){
+  const d = wpResult.derivation || wpResult;
+  const level = wpResult.level || d.riskAssessment.level;
+  const v = DB.villages.find(x=>x.id===WP.villageId);
+  const risk = d.riskAssessment;
+  $('wpResult').innerHTML =
+    '<div style="display:flex; flex-direction:column; gap:16px;">' +
+    // 风险结论
+    '<div class="card" style="padding:20px;">' +
+      '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">' +
+        '<h3 style="font-size:1rem; font-weight:700; display:flex; align-items:center; gap:8px; color:var(--ink);">'+IC.alert.replace('currentColor','var(--warn-red)')+'风险评估结论</h3>' +
+        warnBadge(level) +
+      '</div>' +
+      '<div style="font-size:.84rem; color:var(--ink-sub); display:flex; align-items:center; gap:6px; margin-bottom:10px;">'+IC.mapPin+v.name+' · '+v.township+'</div>' +
+      riskBar(risk.riskScore, risk.level) +
+      '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:12px;">' +
+        metricBox('危险性', risk.hazard) + metricBox('暴露度', risk.exposure) + metricBox('脆弱性', risk.vulnerability) +
+      '</div>' +
+    '</div>' +
+    // 八步链
+    '<div class="card" style="padding:20px;">' +
+      '<h3 style="font-size:1rem; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:8px;">'+IC.layout+'<span style="color:var(--primary);">八步模型链推演</span></h3>' +
+      '<div id="wpChain" style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px;">'+modelChainHTML(d)+'</div>' +
+    '</div>' +
+    // 双版文案
+    '<div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">' +
+      '<div class="card" style="padding:20px;"><h4 style="font-size:.88rem; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:6px; color:var(--ink);">'+IC.users.replace('currentColor','var(--safe)')+'村民通俗版文案</h4><div style="font-size:.84rem; color:var(--ink-sub); line-height:1.7; white-space:pre-wrap; background:var(--bg); padding:12px; border-radius:8px;">'+esc(wpResult.publicText || genPublicText(level, v.name, d))+'</div></div>' +
+      '<div class="card" style="padding:20px;"><h4 style="font-size:.88rem; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:6px; color:var(--ink);">'+IC.alert.replace('currentColor','var(--warn-orange)')+'专业溯源版文案</h4><div style="font-size:.82rem; color:var(--ink-sub); line-height:1.7; white-space:pre-wrap; background:var(--bg); padding:12px; border-radius:8px;">'+esc(wpResult.professionalText || genProText(v.name, d))+'</div></div>' +
+    '</div>' +
+    '<button class="btn-danger" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px;" onclick="wpPublish()">'+IC.send+'发布预警</button>' +
+    '</div>';
+}
+function riskBar(score, level){
+  const col = WC[level]?WC[level].color:'#1976D2';
+  return '<div><div style="display:flex; justify-content:space-between; font-size:.76rem; color:var(--ink-sub); margin-bottom:4px;"><span>综合风险评分</span><span style="font-weight:700; color:'+col+';">'+score+' / 100</span></div><div style="height:8px; background:var(--bg); border-radius:4px; overflow:hidden;"><div style="height:100%; width:'+score+'%; background:'+col+'; border-radius:4px;"></div></div></div>';
+}
+function metricBox(label, val){ return '<div style="background:var(--bg); border-radius:8px; padding:12px; text-align:center;"><div style="font-size:.82rem; color:var(--ink-sub);">'+label+'</div><div style="font-size:1.1rem; font-weight:700; margin-top:4px;">'+val+'</div></div>'; }
+function modelChainHTML(d){
+  let steps;
+  if(d.iceModel){
+    steps = [
+      {icon:IC.cloud, title:'① 冰情输入', color:'#00ACC1', lines:['冰厚: '+d.ice.iceThickness+' m','流凌密度: '+d.ice.flowDensity+' %','气温: '+d.ice.temp+' ℃','数据源: '+d.ice.dataSource]},
+      {icon:IC.trend, title:'② 热力评估', color:'#2E7DFF', lines:['开江倒计时: '+d.channelRouting.peakArrivalTime+' 小时','武开河风险: '+(d.ice.temp>=-5?'高':'中'),'气温回升系数: '+(d.ice.temp>=0?1:(d.ice.temp>=-5?0.75:0.5))]},
+      {icon:IC.wave, title:'③ 冰塞壅水', color:'#0070B8', lines:['弯道卡塞风险分: '+Math.round(d.ice.flowDensity*0.6+d.ice.iceThickness*80+d.ice.waterRise*30),'壅水涨率: 约 0.12 m/h','监测断面数: '+d.channelRouting.sections.length]},
+      {icon:IC.cloud, title:'④ 漫滩淹没', color:'#F57C00', lines:['淹没面积: '+d.inundation.area+' km²','最大水深: '+d.inundation.maxDepth+' m','水深分布: '+d.inundation.depthDistribution]},
+      {icon:IC.alert, title:'⑤ 风险评估', color:'#FBC000', lines:['危险性: '+d.riskAssessment.hazard,'暴露度: '+d.riskAssessment.exposure,'脆弱性: '+d.riskAssessment.vulnerability,'风险分: '+d.riskAssessment.riskScore]},
+      {icon:IC.alert, title:'⑥ 预警等级', color:'#E62020', lines:['等级: '+d.riskAssessment.level.toUpperCase(),'防凌应急响应已触发']},
+      {icon:IC.users, title:'⑦ 转移任务', color:'#27AE60', lines:['转移人数: '+d.transferTask.personCount,'安置点: '+d.transferTask.shelterName,'负责人: '+d.transferTask.responsible,'路线: '+d.transferTask.routes.join('、')]},
+      {icon:IC.refresh, title:'⑧ 反馈校正', color:'#4E5969', lines:['模型版本: '+d.feedbackCorrection.modelVersion,'最近校准: '+d.feedbackCorrection.lastCalibrated,'精度: '+d.feedbackCorrection.accuracyNote]},
+    ];
+  } else {
+    steps = [
+    {icon:IC.cloud, title:'① 降雨输入', color:'#1976D2', lines:['强度: '+d.rainfall.intensity+' mm/h','累计: '+d.rainfall.cumulative+' mm','预报: '+d.rainfall.forecast+' mm','来源: '+d.rainfall.dataSource]},
+    {icon:IC.wave, title:'② 产流计算', color:'#2E7DFF', lines:['CN 值: '+d.runoff.curveNumber,'洪峰流量: '+d.runoff.peakFlow+' m³/s','汇流时间: '+d.runoff.convergenceTime+' min','产流时刻: '+d.runoff.yieldTime+' min']},
+    {icon:IC.layout, title:'③ 河道汇流', color:'#0070B8', lines:['洪峰到达: '+d.channelRouting.peakArrivalTime+' min','洪峰流速: '+d.channelRouting.peakVelocity+' m/s','断面数: '+d.channelRouting.sections.length]},
+    {icon:IC.cloud, title:'④ 溃决淹没', color:'#F57C00', lines:['淹没面积: '+d.inundation.area+' km²','最大水深: '+d.inundation.maxDepth+' m','水深分布: '+d.inundation.depthDistribution]},
+    {icon:IC.alert, title:'⑤ 风险评估', color:'#FBC000', lines:['危险性: '+d.riskAssessment.hazard,'暴露度: '+d.riskAssessment.exposure,'脆弱性: '+d.riskAssessment.vulnerability,'风险分: '+d.riskAssessment.riskScore]},
+    {icon:IC.alert, title:'⑥ 预警等级', color:'#E62020', lines:['等级: '+d.riskAssessment.level.toUpperCase(),'触发阈值已突破']},
+    {icon:IC.users, title:'⑦ 转移任务', color:'#27AE60', lines:['转移人数: '+d.transferTask.personCount,'安置点: '+d.transferTask.shelterName,'负责人: '+d.transferTask.responsible,'路线: '+d.transferTask.routes.join('、')]},
+    {icon:IC.refresh, title:'⑧ 反馈校正', color:'#4E5969', lines:['模型版本: '+d.feedbackCorrection.modelVersion,'最近校准: '+d.feedbackCorrection.lastCalibrated,'精度: '+d.feedbackCorrection.accuracyNote]},
+  ];
+  }
+  return steps.map((s,i)=>'<div class="model-step" style="border:1px solid var(--border); border-radius:8px; padding:12px; min-height:120px; animation:step-in .5s ease; '+(i<wpVisibleSteps?'display:block;':'display:none;')+'">'+
+    '<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;"><span style="width:28px; height:28px; border-radius:6px; display:flex; align-items:center; justify-content:center; background:'+s.color+'; color:#fff; flex-shrink:0;">'+s.icon.replace('width="20"','width="16"').replace('height="20"','height="16"')+'</span><span style="font-size:.82rem; font-weight:700;">'+s.title+'</span></div>'+
+    '<div style="display:flex; flex-direction:column; gap:4px;">'+s.lines.map(l=>'<div style="font-size:.72rem; color:var(--ink-sub); line-height:1.4;">'+l+'</div>').join('')+'</div>'+
+  '</div>').join('');
+}
+function wpPublish(){
+  const v = DB.villages.find(x=>x.id===WP.villageId);
+  const d = wpResult.derivation || wpResult;
+  const level = wpResult.level || d.riskAssessment.level;
+  const t = new Date().toISOString();
+  DB.warnings.unshift({id:'W'+Date.now(), level, disaster_type:v.disaster_type||'flashflood', title:v.name+(DTYPE[v.disaster_type||'flashflood'].label)+'灾害'+WC[level].label, village_id:v.id, village_name:v.name, township:v.township, terrain_risk:v.terrain_risk, publish_time:t, expire_time:new Date(Date.now()+12*3600*1000).toISOString(), status:'active', derivation:d, public_text:(d.publicText||genPublicText(level, v.name, d)), professional_text:(d.professionalText||genProText(v.name, d))});
+  wpShowMsg('预警已发布，村民端将实时收到通知','ok');
+  renderWpList();
+  showToast('预警已发布，村民端将实时收到通知','ok');
+}
+
+/* ============================================================
+   管理端 - 指挥调度大屏
+   ============================================================ */
+function gisXY(v){
+  if(v && v.region==='north'){ return {x:Math.round(480+(v.lng-104.40)*450), y:Math.round(100+(v.lat-29.96)*1500)}; }
+  let x=(v.lng-103.7)*4000+100, y=600-(v.lat-29.5)*4000;
+  return {x:Math.round(Math.max(60,Math.min(720,x))), y:Math.round(Math.max(60,Math.min(440,y)))};
+}
+function renderAdminDashboard(c){
+  const total = DB.personnel.length;
+  const safe = DB.personnel.filter(p=>p.safety_status==='safe').length;
+  const pending = DB.personnel.filter(p=>p.safety_status==='pending').length;
+  const sheltered = DB.personnel.filter(p=>p.safety_status==='sheltered').length;
+  const minor = DB.personnel.filter(p=>p.injury_level==='minor').length;
+  const severe = DB.personnel.filter(p=>p.injury_level==='severe').length;
+  const activeW = DB.warnings.filter(w=>w.status==='active');
+  const inProg = DB.rescue_tasks.filter(t=>t.status!=='completed'&&t.status!=='cancelled').length;
+  const done = DB.rescue_tasks.filter(t=>t.status==='completed').length;
+  const matMap = {};
+  DB.personnel.forEach(p=>{ if(p.material_needs) p.material_needs.split(/[,，]/).forEach(m=>{ m=m.trim(); if(m) matMap[m]=(matMap[m]||0)+1; }); });
+  const mats = Object.entries(matMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const maxM = mats.length?mats[0][1]:1;
+
+  c.innerHTML =
+    '<div style="display:flex; height:100%;">' +
+    // GIS 模拟区
+    '<div style="flex:1; min-width:0; position:relative; background:linear-gradient(135deg,#0a2540,#0f3a5f); display:flex; align-items:center; justify-content:center;">' +
+      '<svg viewBox="0 0 800 500" style="width:90%; height:90%; opacity:.85;">' +
+        '<g fill="#0d4a7a"><path d="M0,320 L80,180 L160,260 L240,120 L320,230 L400,160 L480,250 L480,500 L0,500Z"/><path d="M480,250 L560,170 L640,220 L640,500 L480,500Z" opacity=".6"/></g>' +
+        '<g fill="none" stroke="#2E7DFF" stroke-width="2.5" opacity=".7"><path d="M80,120 Q200,200 160,280 T300,380 Q400,460 340,490"/><path d="M300,380 Q400,400 500,360 T700,430"/></g>' +
+        DB.villages.map(v=>{ const pt=gisXY(v); const x=pt.x, y=pt.y; const w=activeW.find(aw=>aw.village_id===v.id); const col=w?WC[w.level].color:'#27AE60'; return '<g><circle cx="'+x+'" cy="'+y+'" r="9" fill="'+col+'" opacity=".3"/><circle cx="'+x+'" cy="'+y+'" r="5" fill="'+col+'"/><text x="'+(x+10)+'" y="'+(y+4)+'" fill="#fff" font-size="11">'+v.name+'</text></g>'; }).join('') +
+        DB.personnel.filter(p=>p.safety_status==='pending').map(p=>{ const pt=gisXY(p); const x=pt.x, y=pt.y; const col=p.injury_level==='severe'?'#E62020':p.injury_level==='minor'?'#F57C00':'#FBC000'; return '<circle cx="'+x+'" cy="'+y+'" r="3" fill="'+col+'"><animate attributeName="r" values="3;5;3" dur="1.5s" repeatCount="indefinite"/></circle>'; }).join('') +
+      '</svg>' +
+      '<div style="position:absolute; top:12px; left:12px; background:#fff; border-radius:10px; padding:8px 12px; box-shadow:0 2px 8px rgba(0,0,0,.15); z-index:10;"><div style="font-size:.88rem; font-weight:700; display:flex; align-items:center; gap:6px;">'+IC.mapPin+'<span style="color:var(--primary);">指挥调度 GIS 大屏</span></div><div style="font-size:.72rem; color:var(--ink-sub); margin-top:2px;">村组 '+DB.villages.length+' · 预警 '+activeW.length+' · 人员 '+total+'</div></div>' +
+    '</div>' +
+    // 右侧数据面板
+    '<aside style="width:320px; flex-shrink:0; border-left:1px solid var(--border); background:var(--bg); overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:12px;">' +
+      '<div><div style="font-size:.76rem; font-weight:700; color:var(--ink-sub); margin-bottom:8px; display:flex; align-items:center; gap:6px;">'+IC.users+'人员统计</div><div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">' +
+        statCard('总人数', total, '#005288') + statCard('已安全', safe, '#27AE60') + statCard('待避险', pending, '#E62020') + statCard('受伤人数', minor+severe, '#F57C00') +
+      '</div></div>' +
+      '<div><div style="font-size:.76rem; font-weight:700; color:var(--ink-sub); margin-bottom:8px; display:flex; align-items:center; gap:6px;">'+IC.activity+'救援任务统计</div><div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">' +
+        statCard('进行中', inProg, '#F57C00') + statCard('已完成', done, '#27AE60') +
+      '</div></div>' +
+      '<div class="card" style="padding:12px;"><div style="font-size:.76rem; font-weight:700; color:var(--ink-sub); margin-bottom:8px; display:flex; align-items:center; gap:6px;">'+IC.pkg+'物资需求 TOP</div>' +
+        (mats.length? '<div style="display:flex; flex-direction:column; gap:8px;">'+mats.map(([n,c])=>'<div><div style="display:flex; justify-content:space-between; font-size:.76rem; margin-bottom:3px;"><span>'+n+'</span><span style="color:var(--ink-sub);">'+c+'</span></div><div style="height:6px; background:var(--bg); border-radius:3px; overflow:hidden;"><div style="height:100%; width:'+(c/maxM*100)+'%; background:var(--accent); border-radius:3px;"></div></div></div>').join('')+'</div>' : '<div style="font-size:.82rem; color:var(--ink-sub); text-align:center; padding:12px;">暂无物资需求</div>') +
+      '</div>' +
+      '<div class="card" style="padding:12px;"><div style="font-size:.76rem; font-weight:700; color:var(--ink-sub); margin-bottom:8px; display:flex; align-items:center; gap:6px;">'+IC.alert+'活跃预警 ('+activeW.length+')</div>' +
+        (activeW.length? '<div style="display:flex; flex-direction:column; gap:8px; max-height:260px; overflow-y:auto;">'+activeW.map(w=>'<div style="border:1px solid var(--border); border-radius:8px; padding:8px; font-size:.76rem;"><div style="display:flex; justify-content:space-between; margin-bottom:4px;">'+warnBadge(w.level,'sm')+'<span style="color:var(--ink-sub); font-size:.68rem;">'+w.village_name+' · '+timeAgo(w.publish_time)+'</span></div><div style="font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">'+w.title+'</div></div>').join('')+'</div>' : '<div style="font-size:.82rem; color:var(--ink-sub); text-align:center; padding:12px;">当前无活跃预警</div>') +
+      '</div>' +
+    '</aside></div>';
+}
+function statCard(title, val, color){
+  return '<div class="card" style="padding:12px; display:flex; align-items:center; gap:10px;"><span style="width:6px; height:36px; border-radius:3px; background:'+color+';"></span><div><div style="font-size:1.5rem; font-weight:700; line-height:1;">'+val+'</div><div style="font-size:.72rem; color:var(--ink-sub); margin-top:3px;">'+title+'</div></div></div>';
+}
+
+/* ============================================================
+   管理端 - 人员台账
+   ============================================================ */
+let pFilter = {village:'',status:'',injury:'',kw:''};
+function renderAdminPersonnel(c){
+  c.innerHTML =
+    '<div style="padding:16px; display:flex; flex-direction:column; gap:16px;">' +
+    '<div class="card" style="padding:16px;"><div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">'+IC.layout+'<span style="font-size:.88rem; font-weight:700;">筛选条件</span></div>' +
+      '<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px;">' +
+        '<div><label style="display:block; font-size:.72rem; color:var(--ink-sub); margin-bottom:4px;">村组</label><select id="pfV" class="input-field"><option value="">全部村组</option>'+DB.villages.map(v=>'<option value="'+v.id+'">'+v.name+'</option>').join('')+'</select></div>' +
+        '<div><label style="display:block; font-size:.72rem; color:var(--ink-sub); margin-bottom:4px;">安全状态</label><select id="pfS" class="input-field"><option value="">全部状态</option><option value="pending">待避险</option><option value="sheltered">已安置</option><option value="rescuing">救援中</option><option value="safe">已安全</option></select></div>' +
+        '<div><label style="display:block; font-size:.72rem; color:var(--ink-sub); margin-bottom:4px;">伤情等级</label><select id="pfI" class="input-field"><option value="">全部伤情</option><option value="none">无受伤</option><option value="minor">轻微受伤</option><option value="severe">重度受伤</option></select></div>' +
+        '<div><label style="display:block; font-size:.72rem; color:var(--ink-sub); margin-bottom:4px;">关键词搜索</label><input id="pfK" class="input-field" placeholder="姓名/电话/村组"></div>' +
+      '</div>' +
+      '<div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;"><span style="font-size:.72rem; color:var(--ink-sub);">共 <b id="pfCount" style="color:var(--ink);">0</b> 条记录</span><button class="btn-secondary" style="height:36px; padding:0 12px; font-size:.76rem; display:flex; align-items:center; gap:6px;" onclick="adminNav(\'personnel\')">'+IC.refresh+'刷新</button></div>' +
+    '</div>' +
+    '<div class="card" style="padding:16px;"><div style="overflow-x:auto;"><table><thead><tr><th>姓名</th><th>村组</th><th>坐标</th><th>同行人数</th><th>伤情</th><th>状态</th><th>到达时间</th></tr></thead><tbody id="pTable"></tbody></table></div></div>' +
+    '<div id="pDetailMask" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:2000; justify-content:flex-end;" onclick="closePDetail()"><div style="width:100%; max-width:420px; background:#fff; height:100%; overflow-y:auto; box-shadow:0 8px 30px rgba(0,0,0,.2);" onclick="event.stopPropagation()" id="pDetailBox"></div></div>' +
+    '</div>';
+  $('pfV').value=pFilter.village; $('pfS').value=pFilter.status; $('pfI').value=pFilter.injury; $('pfK').value=pFilter.kw;
+  ['pfV','pfS','pfI'].forEach(id=>$(id).onchange=()=>{ pFilter.village=$('pfV').value; pFilter.status=$('pfS').value; pFilter.injury=$('pfI').value; renderPTable(); });
+  $('pfK').oninput=()=>{ pFilter.kw=$('pfK').value; renderPTable(); };
+  renderPTable();
+}
+function renderPTable(){
+  let list = DB.personnel.slice();
+  if(pFilter.village) list=list.filter(p=>p.village_id===pFilter.village);
+  if(pFilter.status) list=list.filter(p=>p.safety_status===pFilter.status);
+  if(pFilter.injury) list=list.filter(p=>p.injury_level===pFilter.injury);
+  if(pFilter.kw.trim()){ const k=pFilter.kw.trim().toLowerCase(); list=list.filter(p=>p.name.toLowerCase().includes(k)||p.phone.includes(k)||(p.village_name||'').toLowerCase().includes(k)); }
+  $('pfCount').textContent=list.length;
+  $('pTable').innerHTML = list.map((p,idx)=>'<tr style="cursor:pointer;" onclick="openPDetail('+DB.personnel.indexOf(p)+')"><td style="font-weight:500; color:var(--ink);">'+p.name+'</td><td style="color:var(--ink-sub);">'+(p.village_name||'-')+'</td><td style="color:var(--ink-sub); font-size:.76rem; font-family:monospace;">'+p.lng.toFixed(4)+', '+p.lat.toFixed(4)+'</td><td>'+p.companion_count+'</td><td>'+injuryBadge(p.injury_level)+'</td><td>'+statusBadge(p.safety_status)+'</td><td style="color:var(--ink-sub); font-size:.76rem;">-</td></tr>').join('');
+}
+function openPDetail(idx){
+  const p = DB.personnel[idx];
+  const tasks = DB.rescue_tasks.filter(t=>t.target_personnel_id===p.id);
+  $('pDetailBox').innerHTML =
+    '<div style="position:sticky; top:0; background:var(--primary); color:#fff; padding:16px 20px; display:flex; justify-content:space-between; align-items:center;"><span style="display:flex; align-items:center; gap:8px; font-weight:700;">'+IC.users+'人员详情</span><span onclick="closePDetail()" style="cursor:pointer; font-size:1.2rem;">×</span></div>' +
+    '<div style="padding:20px; display:flex; flex-direction:column; gap:16px;">' +
+      '<div style="display:flex; align-items:center; gap:12px;"><div style="width:64px; height:64px; border-radius:50%; background:rgba(0,82,136,.1); color:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:1.5rem;">'+p.name.charAt(0)+'</div><div><h3 style="font-size:1.3rem; font-weight:700;">'+p.name+'</h3><div style="display:flex; gap:8px; margin-top:6px;">'+statusBadge(p.safety_status)+injuryBadge(p.injury_level)+'</div></div></div>' +
+      '<div style="display:flex; flex-direction:column; gap:8px; font-size:.88rem;">' +
+        infoRow(IC.phone,'联系电话',p.phone||'-') + infoRow(IC.mapPin,'所属村组',(p.village_name||'-')+'（'+(p.township||'-')+'）') + infoRow(IC.mapPin,'当前坐标',p.lng.toFixed(5)+', '+p.lat.toFixed(5)) + infoRow(IC.users,'同行人数',p.companion_count+' 人') + infoRow(IC.pkg,'物资需求',p.material_needs||'无') +
+      '</div>' +
+      '<div><h4 style="font-size:.88rem; font-weight:700; margin-bottom:8px;">关联救援任务</h4>' + (tasks.length?'<div style="display:flex; flex-direction:column; gap:8px;">'+tasks.map(t=>'<div style="border:1px solid var(--border); border-radius:8px; padding:8px; font-size:.76rem;"><div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span style="font-weight:500;">'+(t.team_name||'救援队伍')+'</span><span class="tag" style="background:rgba(46,125,255,.1); color:var(--accent);">'+t.status+'</span></div><div style="color:var(--ink-sub);">ETA: '+(t.eta_minutes?Math.round(t.eta_minutes/60)+' 小时':'-')+'</div></div>').join('')+'</div>':'<div style="font-size:.82rem; color:var(--ink-sub); text-align:center; padding:12px;">暂无关联救援任务</div>') + '</div>' +
+    '</div>';
+  $('pDetailMask').classList.remove('hidden'); $('pDetailMask').style.display='flex';
+}
+function closePDetail(){ $('pDetailMask').classList.add('hidden'); $('pDetailMask').style.display='none'; }
+function infoRow(icon,label,val){ return '<div style="display:flex; align-items:flex-start; gap:8px;"><span style="color:var(--ink-sub); flex-shrink:0;">'+icon+'</span><span style="color:var(--ink-sub); width:80px; flex-shrink:0;">'+label+'</span><span style="flex:1; word-break:break-all;">'+val+'</span></div>'; }
+
+/* ============================================================
+   管理端 - 救援调度
+   ============================================================ */
+const TSK_LABEL = {pending:'待派单',dispatched:'待出发',enroute:'执行中',arrived:'执行中',completed:'已完成',cancelled:'已撤销'};
+const TSK_COLOR = {pending:'#E62020',dispatched:'#1976D2',enroute:'#F57C00',arrived:'#F57C00',completed:'#27AE60',cancelled:'#86909C'};
+
+function renderAdminRescue(c){
+  const pending = DB.personnel.filter(p=>p.safety_status==='pending');
+  const active = DB.rescue_tasks.filter(t=>t.status!=='completed'&&t.status!=='cancelled');
+  const done = DB.rescue_tasks.filter(t=>t.status==='completed'||t.status==='cancelled');
+  c.innerHTML =
+    '<div style="padding:16px; display:flex; flex-direction:column; gap:16px;">' +
+    '<div style="display:flex; justify-content:space-between; align-items:center;"><h2 style="font-size:1.1rem; font-weight:700; display:flex; align-items:center; gap:8px;">'+IC.lifebuoy+'<span style="color:var(--warn-orange);">救援调度面板</span></h2><button class="btn-secondary" style="height:36px; padding:0 12px; font-size:.82rem; display:flex; align-items:center; gap:6px;" onclick="adminNav(\'rescue\')">'+IC.refresh+'刷新</button></div>' +
+    // 救援队伍状态
+    '<div class="card" style="padding:12px;"><div style="font-size:.76rem; font-weight:700; color:var(--ink-sub); margin-bottom:8px; display:flex; align-items:center; gap:6px;">'+IC.lifebuoy+'救援队伍状态</div><div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">' +
+      DB.rescue_teams.map(t=>{ const has=active.some(a=>a.team_id===t.id); return '<div style="border:1px solid '+(has?'rgba(245,124,0,.3)':'rgba(39,174,96,.3)')+'; background:'+(has?'rgba(245,124,0,.05)':'rgba(39,174,96,.05)')+'; border-radius:8px; padding:8px 12px; font-size:.76rem;"><div style="font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">'+t.name+'</div><div style="color:var(--ink-sub); margin-top:2px;">队长：'+t.leader_name+' · '+t.member_count+'人</div><div style="margin-top:2px; font-weight:500; color:'+(has?'var(--warn-orange)':'var(--safe)')+';">● '+(has?'执行中':'空闲待命')+'</div></div>'; }).join('') +
+    '</div></div>' +
+    '<div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">' +
+      // 待救援人员
+      '<div class="card" style="padding:16px;"><h3 style="font-size:1rem; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px;">'+IC.alert+'<span style="color:var(--warn-red);">待救援人员 ('+pending.length+')</span></h3>' +
+        '<div style="display:flex; flex-direction:column; gap:8px; max-height:calc(100vh - 380px); overflow-y:auto;">' +
+          (pending.length? pending.map(p=>'<div style="border:1px solid var(--border); border-radius:8px; padding:12px;"><div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;"><div style="width:40px; height:40px; border-radius:50%; background:rgba(0,82,136,.1); color:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:700;">'+p.name.charAt(0)+'</div><div><div style="display:flex; align-items:center; gap:8px;"><span style="font-weight:700;">'+p.name+'</span>'+statusBadge(p.safety_status)+injuryBadge(p.injury_level)+'</div><div style="font-size:.72rem; color:var(--ink-sub); margin-top:2px; display:flex; align-items:center; gap:4px;">'+IC.mapPin+'<span>'+(p.village_name||'-')+' · '+p.lng.toFixed(3)+', '+p.lat.toFixed(3)+'</span></div></div></div><div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; font-size:.72rem; color:var(--ink-sub); margin-bottom:8px;"><div style="display:flex; align-items:center; gap:4px;">'+IC.phone+' '+p.phone+'</div><div style="display:flex; align-items:center; gap:4px;">'+IC.users+' 同行 '+p.companion_count+' 人</div>'+(p.material_needs?'<div style="grid-column:span 2; display:flex; align-items:center; gap:4px;">'+IC.pkg+' '+p.material_needs+'</div>':'')+'</div><button class="btn-accent" style="height:36px; width:100%; font-size:.82rem; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="openAssign('+DB.personnel.indexOf(p)+')">'+IC.send+'指派救援队伍</button></div>').join('') : '<div style="text-align:center; color:var(--ink-sub); padding:24px; font-size:.88rem;">暂无待救援人员</div>') +
+        '</div>' +
+      '</div>' +
+      // 任务列表
+      '<div style="display:flex; flex-direction:column; gap:16px;">' +
+        '<div class="card" style="padding:16px;"><h3 style="font-size:1rem; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px;">'+IC.nav+'<span style="color:var(--accent);">进行中任务 ('+active.length+')</span></h3>' +
+          '<div style="display:flex; flex-direction:column; gap:8px; max-height:300px; overflow-y:auto;">' +
+            (active.length? active.map(t=>taskCard(t)).join('') : '<div style="text-align:center; color:var(--ink-sub); padding:24px; font-size:.88rem;">暂无进行中任务</div>') +
+          '</div>' +
+        '</div>' +
+        '<div class="card" style="padding:16px;"><h3 style="font-size:1rem; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px;">'+IC.check+'<span style="color:var(--safe);">已完成/撤销 ('+done.length+')</span></h3>' +
+          '<div style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y-auto;">' +
+            (done.length? done.map(t=>taskCard(t)).join('') : '<div style="text-align:center; color:var(--ink-sub); padding:24px; font-size:.88rem;">暂无历史任务</div>') +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    // 指派弹窗
+    '<div id="assignMask" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:2000; display:flex; align-items:center; justify-content:center; padding:16px;" onclick="closeAssign()"><div class="card" style="width:100%; max-width:440px;" onclick="event.stopPropagation()" id="assignBox"></div></div>' +
+    '</div>';
+}
+function taskCard(t){
+  const col = TSK_COLOR[t.status]||'#86909C';
+  return '<div style="border:1px solid var(--border); border-radius:8px; padding:12px;"><div style="display:flex; justify-content:space-between; margin-bottom:8px;"><div style="display:flex; align-items:center; gap:8px;"><span style="font-weight:700; font-size:.84rem;">'+t.target_name+'</span>'+injuryBadge(t.injury_level)+'</div><span class="tag" style="background:'+col+'; color:#fff;">'+(TSK_LABEL[t.status]||t.status)+'</span></div><div style="display:grid; grid-template-columns:1fr 1fr; gap:4px; font-size:.72rem; color:var(--ink-sub);"><div style="display:flex; align-items:center; gap:4px;">'+IC.lifebuoy+' '+(t.team_name||'-')+'</div><div style="display:flex; align-items:center; gap:4px;">'+IC.clock+' ETA '+(t.eta_minutes?Math.round(t.eta_minutes/60)+' 小时':'-')+'</div><div style="display:flex; align-items:center; gap:4px;">'+IC.mapPin+' '+(t.village_name||'-')+'</div><div style="display:flex; align-items:center; gap:4px;">'+IC.users+' '+(t.leader_name||'-')+'</div></div>'+(t.hazard_note?'<div style="font-size:.72rem; color:var(--warn-red); margin-top:6px; display:flex; align-items:center; gap:4px;">'+IC.alert+' '+t.hazard_note+'</div>':'')+'</div>';
+}
+let assignTarget = null;
+function openAssign(idx){
+  assignTarget = DB.personnel[idx];
+  const p = assignTarget;
+  $('assignBox').innerHTML =
+    '<div style="background:var(--primary); color:#fff; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; border-radius:14px 14px 0 0;"><span style="display:flex; align-items:center; gap:8px; font-weight:700;">'+IC.lifebuoy+'指派救援任务</span><span onclick="closeAssign()" style="cursor:pointer; font-size:1.2rem;">×</span></div>' +
+    '<div style="padding:20px; display:flex; flex-direction:column; gap:12px;">' +
+      '<div style="border:1px solid var(--border); border-radius:8px; padding:12px; background:rgba(245,247,250,.5);"><div style="font-size:.72rem; color:var(--ink-sub); margin-bottom:4px;">救援目标</div><div style="display:flex; align-items:center; gap:8px;"><span style="font-weight:700;">'+p.name+'</span>'+injuryBadge(p.injury_level)+'</div><div style="font-size:.72rem; color:var(--ink-sub); margin-top:4px;">'+(p.village_name||'-')+' · '+p.lng.toFixed(4)+', '+p.lat.toFixed(4)+'</div></div>' +
+      '<div><label style="display:block; font-size:.72rem; color:var(--ink-sub); margin-bottom:4px;">派遣救援队伍</label><select id="assignTeam" class="input-field"><option value="">请选择救援队伍</option>'+DB.rescue_teams.map(t=>'<option value="'+t.id+'">'+t.name+' · '+t.leader_name+' · '+t.member_count+'人</option>').join('')+'</select></div>' +
+      '<div><label style="display:block; font-size:.72rem; color:var(--ink-sub); margin-bottom:4px;">危险提示（可选）</label><textarea id="assignHazard" class="input-field" style="min-height:60px;" placeholder="如：山路湿滑、塌方风险等"></textarea></div>' +
+      '<div><label style="display:block; font-size:.72rem; color:var(--ink-sub); margin-bottom:4px;">禁行路线（可选）</label><input id="assignRoute" class="input-field" placeholder="如：老路 3km 段"></div>' +
+      '<div style="display:flex; gap:8px; padding-top:4px;"><button class="btn-secondary" style="flex:1;" onclick="closeAssign()">取消</button><button class="btn-accent" style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="doAssign()">'+IC.send+'确认指派</button></div>' +
+    '</div>';
+  $('assignMask').classList.remove('hidden'); $('assignMask').style.display='flex';
+}
+function closeAssign(){ $('assignMask').classList.add('hidden'); $('assignMask').style.display='none'; assignTarget=null; }
+function doAssign(){
+  if(!assignTarget){ return; }
+  const teamId = $('assignTeam').value;
+  if(!teamId){ showToast('请选择救援队伍','err'); return; }
+  const team = DB.rescue_teams.find(t=>t.id===teamId);
+  const p = assignTarget;
+  DB.rescue_tasks.unshift({
+    id:'T'+Date.now(), target_personnel_id:p.id, target_name:p.name, target_lng:p.lng, target_lat:p.lat,
+    team_id:teamId, team_name:team.name, injury_level:p.injury_level, material_needs:p.material_needs,
+    hazard_note:$('assignHazard').value||'', forbidden_routes:$('assignRoute').value||'', optimal_route:'',
+    status:'dispatched', eta_minutes:240, created_at:new Date().toISOString(),
+    village_name:p.village_name, leader_name:team.leader_name, member_count:team.member_count,
+  });
+  p.safety_status='rescuing';
+  closeAssign();
+  showToast('已指派 '+team.name+' 前往救援 '+p.name+'，预计 4 小时到达','ok');
+  renderAdminRescue($('adminContent'));
+}
+
+/* ============================================================
+   管理端 - 智能情报中心（政府/研究院风格，Monid + OpenDeploy）
+   ============================================================ */
+let intelTab = 'sentiment';
+const SRC_ICONS = {weather:IC.cloud,authoritative:IC.news,geo:IC.mapPin,iot:IC.radio,social:IC.msg};
+const SRC_COLOR = {weather:'var(--primary)',authoritative:'var(--safe)',geo:'var(--warn-orange)',iot:'var(--warn-yellow)',social:'var(--warn-red)'};
+const URG = {high:{color:'#E62020',label:'紧急',num:'Ⅰ',bg:'rgba(230,32,32,.05)'},medium:{color:'#F57C00',label:'关注',num:'Ⅱ',bg:'rgba(245,124,0,.05)'},low:{color:'#27AE60',label:'常规',num:'Ⅲ',bg:'rgba(39,174,96,.05)'}};
+const NODE_ICON = {rescue_device:IC.msg,edge_server:IC.server,village_kiosk:IC.mapPin};
+const NODE_STATUS = {online:{dot:'#27AE60',label:'在线'},offline:{dot:'#E62020',label:'离线'},syncing:{dot:'#FBC000',label:'同步中'}};
+
+function renderAdminIntel(c){
+  c.innerHTML =
+    '<div>' +
+    // 深蓝渐变标题栏
+    '<div style="background:linear-gradient(to right,#003D66,#005288,#0070B8); color:#fff; padding:20px 32px; position:relative;">' +
+      '<div style="display:flex; justify-content:space-between; align-items:flex-start;">' +
+        '<div><div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">'+IC.building+'<h1 style="font-size:1.2rem; font-weight:700; letter-spacing:1px;">智能情报研判中心</h1></div><p style="font-size:.82rem; color:rgba(255,255,255,.7);">多源异构数据融合 · GLM-5.1 智能决策 · 边缘协同部署</p></div>' +
+        '<div style="text-align:right; font-size:.72rem; color:rgba(255,255,255,.6); line-height:1.6;"><div>数据引擎：Monid · 推理模型：GLM-5.1</div><div>部署引擎：OpenDeploy · 边缘节点：'+EDGE_NODES.length+'</div></div>' +
+      '</div>' +
+      '<button onclick="adminNav(\'intelligence\')" style="position:absolute; top:20px; right:32px; height:32px; padding:0 12px; border-radius:6px; background:rgba(255,255,255,.1); color:#fff; font-size:.72rem; display:flex; align-items:center; gap:6px;">'+IC.refresh+'刷新数据</button>' +
+    '</div>' +
+    '<div style="padding:24px; max-width:1100px; margin:0 auto;">' +
+      // Tab 切换
+      '<div style="display:flex; gap:4px; margin-bottom:20px; border-bottom:1px solid var(--border);">' +
+        '<button onclick="switchIntelTab(\'sentiment\')" id="itb-sentiment" style="height:44px; padding:0 20px; font-size:.88rem; font-weight:700; border-bottom:2px solid '+(intelTab==='sentiment'?'var(--primary)':'transparent')+'; color:'+(intelTab==='sentiment'?'var(--primary)':'var(--ink-sub)')+'; margin-bottom:-1px; display:flex; align-items:center; gap:6px;">'+IC.radar+'多源数据研判报告</button>' +
+        '<button onclick="switchIntelTab(\'edge\')" id="itb-edge" style="height:44px; padding:0 20px; font-size:.88rem; font-weight:700; border-bottom:2px solid '+(intelTab==='edge'?'var(--primary)':'transparent')+'; color:'+(intelTab==='edge'?'var(--primary)':'var(--ink-sub)')+'; margin-bottom:-1px; display:flex; align-items:center; gap:6px;">'+IC.server+'边缘部署与协同</button>' +
+      '</div>' +
+      '<div id="intelBody"></div>' +
+    '</div></div>';
+  renderIntelBody();
+}
+function switchIntelTab(tab){
+  intelTab = tab;
+  $('itb-sentiment').style.borderBottomColor = tab==='sentiment'?'var(--primary)':'transparent';
+  $('itb-sentiment').style.color = tab==='sentiment'?'var(--primary)':'var(--ink-sub)';
+  $('itb-edge').style.borderBottomColor = tab==='edge'?'var(--primary)':'transparent';
+  $('itb-edge').style.color = tab==='edge'?'var(--primary)':'var(--ink-sub)';
+  renderIntelBody();
+}
+function govStatCard(icon, val, label, sub, color){
+  return '<div class="card" style="padding:16px; position:relative; overflow:hidden;"><span style="position:absolute; top:0; left:0; width:4px; height:100%; background:'+color+';"></span><div style="display:flex; align-items:center; gap:12px;"><div style="width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:'+color+'25; color:'+color+';">'+icon+'</div><div><div style="font-size:1.5rem; font-weight:700; line-height:1;">'+val+'<span style="font-size:.88rem; color:var(--ink-sub); margin-left:2px;">'+sub+'</span></div><div style="font-size:.72rem; color:var(--ink-sub); margin-top:4px;">'+label+'</div></div></div></div>';
+}
+function renderIntelBody(){
+  const body = $('intelBody');
+  if(intelTab==='sentiment'){
+    const s = SENTIMENT;
+    body.innerHTML =
+      '<div style="display:flex; flex-direction:column; gap:20px;">' +
+      // 核心指标
+      '<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px;">' +
+        govStatCard(IC.msg, s.totalMentions, '全网信息采集量', '条', '#005288') +
+        govStatCard(IC.alert, s.rescueRequests, '求救信号识别', '条', '#E62020') +
+        govStatCard(IC.shieldCheck, s.officialNotices, '权威通报收录', '份', '#27AE60') +
+        govStatCard(IC.alert, s.rumorAlerts, '谣言预警标记', '条', '#F57C00') +
+      '</div>' +
+      // Monid 五维数据源矩阵
+      '<div class="card" style="overflow:hidden;"><div style="padding:10px 16px; background:var(--bg); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px;">'+IC.activity+'<span style="font-size:.88rem; font-weight:700;">Monid 多源异构数据接入矩阵</span><span style="margin-left:auto; font-size:.72rem; color:var(--ink-sub);">五维感知体系</span></div>' +
+        '<div style="display:grid; grid-template-columns:repeat(5,1fr);">' +
+          [{k:'weather',l:'气象水文',src:'气象局·水利部',desc:'雷达回波·水位遥测'},{k:'authoritative',l:'权威政务',src:'应急管理局',desc:'通报·泄洪通知'},{k:'geo',l:'地理交通',src:'OSM·高德',desc:'DEM高程·路况'},{k:'iot',l:'物联网感知',src:'传感器网络',desc:'水位计·雨量筒'},{k:'social',l:'社交舆情',src:'微博·小红书',desc:'求救·舆情趋势'}].map(s=>'<div style="padding:12px; text-align:center; border-right:1px solid var(--border);"><div style="display:flex; justify-content:center; margin-bottom:6px; color:'+SRC_COLOR[s.k]+';">'+SRC_ICONS[s.k]+'</div><div style="font-size:.84rem; font-weight:700;">'+s.l+'</div><div style="font-size:.68rem; color:var(--ink-sub); margin-top:2px;">'+s.src+'</div><div style="font-size:.64rem; color:rgba(78,89,105,.7); margin-top:2px;">'+s.desc+'</div></div>').join('') +
+        '</div></div>' +
+      // GLM-5.1 研判报告
+      '<div><div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">'+IC.zap+'<span style="font-size:1rem; font-weight:700;">GLM-5.1 智能研判报告</span><span style="font-size:.76rem; color:var(--ink-sub);">大模型交叉验证 · 更新于 '+timeAgo(s.lastUpdate)+'</span></div>' +
+        '<div style="display:flex; flex-direction:column; gap:8px;">' +
+          s.briefings.map(b=>{ const u=URG[b.urgency]; return '<div class="card" style="border-left:4px solid '+u.color+'; background:'+u.bg+'; overflow:hidden;"><div style="padding:14px;"><div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;"><div style="display:flex; align-items:center; gap:8px;"><span style="width:24px; height:24px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:.72rem; font-weight:700; background:'+u.bg+'; color:'+u.color+';">'+u.num+'</span><span style="color:'+SRC_COLOR[b.category]+';">'+SRC_ICONS[b.category]+'</span><span style="font-size:.84rem; font-weight:700;">'+b.categoryLabel+'</span><span class="tag" style="background:'+u.bg+'; color:'+u.color+';">'+u.label+'</span></div><div style="display:flex; align-items:center; gap:8px; font-size:.72rem;">'+(b.crossVerified?'<span style="display:flex; align-items:center; gap:2px; color:var(--safe); font-weight:700;">'+IC.shieldCheck+'多源交叉验证</span>':'<span style="display:flex; align-items:center; gap:2px; color:var(--warn-orange);">'+IC.alert+'待核实</span>')+'<span style="color:var(--ink-sub);">|</span><span style="display:flex; align-items:center; gap:2px; color:var(--ink-sub);">'+IC.gauge+'置信度 '+b.confidence+'%</span></div></div><p style="font-size:.84rem; line-height:1.7; padding-left:32px;">'+b.summary+'</p><div style="margin-top:8px; padding-left:32px; display:flex; flex-wrap:wrap; align-items:center; gap:12px; font-size:.72rem; color:var(--ink-sub);"><span style="display:flex; align-items:center; gap:2px;">'+IC.mapPin+' '+b.location+'</span>'+(b.suppliesNeeded&&b.suppliesNeeded.length?'<span style="display:flex; align-items:center; gap:2px; color:var(--warn-red); font-weight:700;">'+IC.pkg+'物资需求：'+b.suppliesNeeded.join('、')+'</span>':'')+'<span>来源：'+b.sources.join('、')+'</span></div></div></div>'; }).join('') +
+        '</div></div>' +
+      // 关键词频次条形图
+      (s.topKeywords.length? '<div class="card" style="padding:16px;"><div style="font-size:.88rem; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:4px;">'+IC.trend+'舆情关键词频次分析</div><div style="display:flex; flex-direction:column; gap:8px;">'+s.topKeywords.map((kw,i)=>{ const mx=s.topKeywords[0].count, pct=Math.round(kw.count/mx*100); const col=i===0?'var(--warn-red)':i<3?'var(--warn-orange)':'var(--primary)'; return '<div style="display:flex; align-items:center; gap:12px;"><span style="font-size:.72rem; color:var(--ink-sub); width:20px; text-align:right;">'+(i+1)+'</span><span style="font-size:.84rem; font-weight:700; width:64px;">'+kw.word+'</span><div style="flex:1; height:20px; background:var(--bg); border-radius:4px; overflow:hidden;"><div style="height:100%; width:'+Math.max(pct,15)+'%; background:'+col+'; border-radius:4px; display:flex; align-items:center; justify-content:flex-end; padding-right:6px;"><span style="font-size:.64rem; color:#fff; font-weight:700;">'+kw.count+'</span></div></div></div>'; }).join('')+'</div></div>' : '') +
+      '</div>';
+  } else {
+    // 边缘部署 Tab
+    const online = EDGE_NODES.filter(n=>n.status==='online').length;
+    const syncing = EDGE_NODES.filter(n=>n.status==='syncing').length;
+    const offline = EDGE_NODES.filter(n=>n.status==='offline').length;
+    body.innerHTML =
+      '<div style="display:flex; flex-direction:column; gap:20px;">' +
+      // 部署触发
+      '<div class="card" style="padding:16px; display:flex; justify-content:space-between; align-items:center;"><div><div style="font-size:.88rem; font-weight:700; display:flex; align-items:center; gap:6px;">'+IC.zap+'<span>OpenDeploy 边缘模型分发</span></div><div style="font-size:.72rem; color:var(--ink-sub); margin-top:4px;">将八步水文模型打包为边缘 Agent，推送至救援终端，支持断网续传与热更新</div></div><button class="btn-primary" style="height:40px; padding:0 20px; font-size:.84rem; display:flex; align-items:center; gap:6px;" onclick="triggerDeploy()">'+IC.arrowUp+'触发模型部署</button></div>' +
+      // 节点总览
+      '<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px;">' +
+        '<div class="card" style="padding:12px; text-align:center;"><div style="font-size:2rem; font-weight:700; color:var(--safe);">'+online+'<span style="font-size:1rem; color:var(--ink-sub);">/'+EDGE_NODES.length+'</span></div><div style="font-size:.72rem; color:var(--ink-sub); margin-top:4px;">在线节点</div></div>' +
+        '<div class="card" style="padding:12px; text-align:center;"><div style="font-size:2rem; font-weight:700; color:var(--warn-yellow);">'+syncing+'<span style="font-size:1rem; color:var(--ink-sub);">/'+EDGE_NODES.length+'</span></div><div style="font-size:.72rem; color:var(--ink-sub); margin-top:4px;">同步中</div></div>' +
+        '<div class="card" style="padding:12px; text-align:center;"><div style="font-size:2rem; font-weight:700; color:var(--warn-red);">'+offline+'<span style="font-size:1rem; color:var(--ink-sub);">/'+EDGE_NODES.length+'</span></div><div style="font-size:.72rem; color:var(--ink-sub); margin-top:4px;">离线/待同步</div></div>' +
+      '</div>' +
+      // 节点详情
+      '<div><div style="font-size:1rem; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:6px;">'+IC.server+'边缘节点运行状态</div><div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">' +
+        EDGE_NODES.map(n=>{ const st=NODE_STATUS[n.status]; return '<div class="card" style="padding:12px;"><div style="display:flex; justify-content:space-between; margin-bottom:8px;"><div style="display:flex; align-items:center; gap:8px;"><span style="color:var(--primary);">'+NODE_ICON[n.type]+'</span><span style="font-size:.84rem; font-weight:700;">'+n.name+'</span></div><span style="display:flex; align-items:center; gap:4px; font-size:.72rem;"><span style="width:8px; height:8px; border-radius:50%; background:'+st.dot+';'+(n.status==='syncing'?'animation:pulse-warn 1s ease-in-out infinite;':'')+'"></span><span style="color:'+st.dot+';">'+st.label+'</span></span></div><div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; font-size:.72rem; color:var(--ink-sub);"><div style="display:flex; align-items:center; gap:4px;">'+IC.mapPin+' '+n.location+'</div><div><span class="tag" style="background:var(--bg); color:var(--ink-sub);">'+n.modelVersion+'</span></div>'+(n.batteryLevel!=null?'<div style="font-weight:700; color:'+(n.batteryLevel>50?'var(--safe)':n.batteryLevel>20?'var(--warn-orange)':'var(--warn-red)')+'">电量 '+n.batteryLevel+'%</div>':'')+(n.pendingSync>0?'<div style="color:var(--warn-red); font-weight:700;">待同步 '+n.pendingSync+' 条</div>':'')+'<div style="grid-column:span 2; display:flex; align-items:center; gap:4px;">'+IC.activity+'心跳 '+timeAgo(n.lastHeartbeat)+'</div></div></div>'; }).join('') +
+      '</div></div>' +
+      // 部署历史
+      (DEPLOY_HISTORY.length? '<div><div style="font-size:1rem; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:6px;">'+IC.check+'模型部署记录</div><div class="card" style="overflow:hidden;">'+DEPLOY_HISTORY.map(d=>'<div style="padding:12px; display:flex; justify-content:space-between; font-size:.84rem; border-bottom:1px solid var(--border);"><div style="display:flex; align-items:center; gap:8px;"><span style="width:10px; height:10px; border-radius:50%; background:'+(d.status==='deployed'?'var(--safe)':'var(--warn-yellow)')+';'+(d.status!=='deployed'?'animation:pulse-warn 1s ease-in-out infinite;':'')+'"></span><span style="font-weight:700;">'+d.version+'</span><span style="font-size:.72rem; color:var(--ink-sub);">'+d.trigger+'</span></div><div style="font-size:.72rem; color:var(--ink-sub);">'+d.targetNodes.length+' 节点 · '+(d.status==='deployed'?'已完成':'构建中')+'</div></div>').join('')+'</div></div>' : '') +
+      '</div>';
+  }
+}
+function triggerDeploy(){
+  const btn = event.target;
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<span class="spin" style="display:inline-block; width:14px; height:14px; border:2px solid #fff; border-top-color:transparent; border-radius:50%;"></span>构建推送中…';
+  btn.disabled = true;
+  const ver = 'v2.'+(new Date().getMonth()+1)+'.'+new Date().getDate()+'.'+Math.floor(Math.random()*10);
+  const task = {id:'DEPLOY-'+Date.now(), version:ver, status:'building', trigger:'预警参数更新', targetNodes:EDGE_NODES.slice(), startedAt:new Date().toISOString()};
+  DEPLOY_HISTORY.unshift(task);
+  setTimeout(()=>{
+    task.status='deployed'; task.completedAt=new Date().toISOString();
+    // 更新在线/同步中节点模型版本
+    EDGE_NODES.forEach(n=>{ if(n.status!=='offline') n.modelVersion=ver; });
+    btn.innerHTML = orig; btn.disabled=false;
+    renderIntelBody();
+    showToast('模型 '+ver+' 已部署至 '+EDGE_NODES.filter(n=>n.status!=='offline').length+' 个在线节点','ok');
+  }, 2000);
+}
+
+/* ============================================================
+   村民端（移动端）
+   ============================================================ */
+let vilPage = 'home';
+function villagerNav(page){
+  vilPage = page;
+  const c = $('villagerContent');
+  if(page==='home') renderVilHome(c);
+  else if(page==='warning') renderVilWarning(c);
+  else if(page==='register') renderVilRegister(c);
+  else if(page==='report') renderVilReport(c);
+}
+function getVillagerWarning(){
+  const u = currentUser;
+  return DB.warnings.filter(w=>w.status==='active' && w.village_id===u.village_id).sort((a,b)=>({red:4,orange:3,yellow:2,blue:1}[b.level]-({red:4,orange:3,yellow:2,blue:1}[a.level])))[0];
+}
+function warningMetrics(w){
+  if(w.derivation && w.derivation.iceModel){
+    const i = w.derivation.ice;
+    return '<span style="display:flex; align-items:center; gap:4px;">'+IC.wave+'流凌密度：'+i.flowDensity+'%</span><span>冰厚：'+i.iceThickness+'m</span><span>水位超警：'+i.waterRise+'m</span>';
+  }
+  const rf = w.derivation.rainfall;
+  return '<span style="display:flex; align-items:center; gap:4px;">'+IC.cloud+'当前雨强：'+rf.intensity+'mm/h</span><span>累计：'+rf.cumulative+'mm</span><span>预报：'+rf.forecast+'mm</span>';
+}
+function renderVilHome(c){
+  const w = getVillagerWarning();
+  const v = DB.villages.find(x=>x.id===currentUser.village_id);
+  if(w){
+    const cfg = WC[w.level];
+    const rf = w.derivation.rainfall;
+    c.innerHTML =
+      '<div style="display:flex; flex-direction:column; gap:12px;" class="animate-fade-in">' +
+      '<div class="card" style="overflow:hidden;"><div style="padding:12px; background:'+cfg.color+'; color:#fff;">' +
+        '<div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;"><span class="animate-pulse-warn">'+IC.alert+'</span><span style="font-weight:700; font-size:.84rem;">'+cfg.label+'</span><span style="margin-left:auto; font-size:.72rem; opacity:.9; display:flex; align-items:center; gap:4px;">'+IC.clock+timeAgo(w.publish_time)+'</span></div>' +
+        '<div style="font-size:1rem; font-weight:700; line-height:1.4;">'+w.title+'</div>' +
+        '<div style="font-size:.72rem; opacity:.9; margin-top:4px;">'+(w.village_name||v.name)+' · '+fmtTime(w.publish_time)+'</div>' +
+        '<div style="margin-top:8px; display:flex; align-items:center; gap:12px; background:rgba(255,255,255,.2); border-radius:8px; padding:6px 12px; font-size:.72rem;">'+warningMetrics(w)+'</div>' +
+        '<button onclick="villagerNav(\'warning\')" style="margin-top:8px; display:inline-flex; align-items:center; gap:4px; font-size:.72rem; font-weight:700; background:rgba(255,255,255,.25); padding:4px 12px; border-radius:8px; color:#fff;">查看详情 '+IC.chevR+'</button>' +
+      '</div></div>' +
+      // 快捷操作
+      actionBtn('#27AE60', IC.mapPin, '安置点登记', 'villagerNav(\'register\')') +
+      actionBtn('#2E7DFF', IC.amb, '伤情/物资上报', 'villagerNav(\'report\')') +
+      actionBtn('#F57C00', IC.lifebuoy, '救援进度追踪', 'showToast(\'暂无进行中的救援任务\',\'\')') +
+      actionBtn('#005288', IC.phone, '应急电话', 'showToast(\'正在呼叫 119 应急救援电话…\',\'\')') +
+      // 防汛避险须知
+      '<div class="card" style="padding:12px;"><div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">'+IC.alert.replace('currentColor','var(--warn-orange)')+'<span style="font-size:.84rem; font-weight:700;">四季避险须知</span></div>' +
+        '<div style="display:flex; gap:8px; margin-bottom:10px;">'+IC.wave+'<div style="font-size:.72rem; color:var(--ink-sub); line-height:1.6;"><b style="color:var(--ink);">山洪避险：</b>向沟道两侧高地撤离，严禁顺着河道方向奔跑。若被洪水围困，可利用门板、泡沫、床板等漂浮物资自救，并及时对外求救。</div></div>' +
+        '<div style="display:flex; gap:8px;">'+IC.mountain+'<div style="font-size:.72rem; color:var(--ink-sub); line-height:1.6;"><b style="color:var(--ink);">山体滑坡：</b>向滑坡滑移方向的左右两侧高地撤离，绝对禁止顺着滑坡方向逃跑。无法撤离时抱紧固定大树、躲避在坚固障碍物后方。</div></div>' +
+        '<div style="display:flex; gap:8px; margin-top:10px;">'+IC.wave+'<div style="font-size:.72rem; color:var(--ink-sub); line-height:1.6;"><b style="color:var(--ink);">凌汛（冬春季）：</b>听到开江广播立即撤离至堤防高程以上安置点，严禁在冰面上行走、玩耍或围观，远离弯道卡塞段与历史决口段。</div></div>' +
+      '</div>' +
+      '</div>';
+  } else {
+    c.innerHTML = '<div class="card" style="padding:16px; display:flex; align-items:center; gap:12px;"><div style="width:40px; height:40px; border-radius:50%; background:rgba(39,174,96,.15); display:flex; align-items:center; justify-content:center;">'+IC.shieldCheck.replace('currentColor','var(--safe)').replace('width="20"','width="20"')+'</div><div><div style="font-size:.88rem; font-weight:700;">当前安全</div><div style="font-size:.72rem; color:var(--ink-sub);">您的村组暂无活跃预警</div></div></div>';
+  }
+}
+function actionBtn(bg, icon, label, onclick){
+  return '<button onclick="'+onclick+'" style="width:100%; height:56px; border-radius:10px; display:flex; align-items:center; gap:12px; padding:0 16px; color:#fff; font-weight:700; font-size:1rem; background:'+bg+';"><span style="display:flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,.2);">'+icon+'</span><span style="flex:1; text-align:left;">'+label+'</span>'+IC.chevR.replace('currentColor','rgba(255,255,255,.8)')+'</button>';
+}
+function renderVilWarning(c){
+  const w = getVillagerWarning();
+  const v = DB.villages.find(x=>x.id===currentUser.village_id);
+  const shelter = DB.shelters.find(s=>s.village_id===currentUser.village_id);
+  const tt = w.derivation.transferTask;
+  const cfg = WC[w.level];
+  const rf = w.derivation.rainfall;
+  c.innerHTML =
+    '<div style="display:flex; flex-direction:column; gap:12px;" class="animate-fade-in">' +
+    '<div class="card" style="overflow:hidden;"><div style="padding:12px; background:'+cfg.color+'; color:#fff;"><div style="display:flex; justify-content:space-between;">'+warnBadge(w.level)+'<div style="display:flex; flex-direction:column; align-items:flex-end; gap:2px;"><span style="font-size:.72rem; opacity:.9; display:flex; align-items:center; gap:4px;">'+IC.clock+timeAgo(w.publish_time)+'</span><span style="font-size:.64rem; opacity:.75;">'+fmtTime(w.publish_time)+'</span></div></div><div style="font-size:1.1rem; font-weight:700; margin-top:8px;">'+w.title+'</div><div style="font-size:.72rem; opacity:.9; margin-top:4px; display:flex; align-items:center; gap:4px;">'+IC.mapPin+(w.village_name||v.name)+(w.township?' · '+w.township:'')+'</div><div style="margin-top:8px; display:flex; align-items:center; gap:12px; background:rgba(255,255,255,.2); border-radius:8px; padding:6px 12px; font-size:.72rem;">'+warningMetrics(w)+'</div></div></div>' +
+    // 预警内容
+    '<div class="card" style="padding:12px;"><div style="font-size:.84rem; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:4px;">'+IC.alert.replace('currentColor','var(--warn-red)')+'预警内容</div><div style="font-size:.84rem; color:var(--ink-sub); line-height:1.7; background:var(--bg); border-radius:8px; padding:12px; white-space:pre-wrap;">'+esc(w.public_text)+'</div></div>' +
+    // 避险指引
+    '<div class="card" style="padding:12px; display:flex; flex-direction:column; gap:12px;"><div style="font-size:.84rem; font-weight:700;">避险指引</div><div style="display:flex; gap:8px;">'+IC.wave+'<div style="font-size:.72rem; color:var(--ink-sub); line-height:1.6;"><div style="font-weight:700; color:var(--ink); margin-bottom:4px;">山洪避险</div>向沟道两侧高地撤离，严禁顺着河道方向奔跑。若被洪水围困，可利用门板、泡沫、床板等漂浮物资自救，并及时对外求救。</div></div><div style="display:flex; gap:8px;">'+IC.mountain+'<div style="font-size:.72rem; color:var(--ink-sub); line-height:1.6;"><div style="font-weight:700; color:var(--ink); margin-bottom:4px;">山体滑坡</div>向滑坡滑移方向的左右两侧高地撤离，绝对禁止顺着滑坡方向逃跑。无法撤离时抱紧固定大树、躲避在坚固障碍物后方。</div></div><div style="display:flex; gap:8px;">'+IC.wave+'<div style="font-size:.72rem; color:var(--ink-sub); line-height:1.6;"><div style="font-weight:700; color:var(--ink); margin-bottom:4px;">凌汛（冬春季）</div>听到开江广播立即撤离至堤防高程以上安置点，严禁在冰面上行走、玩耍或围观，远离弯道卡塞段与历史决口段。</div></div></div>' +
+    // 安置点
+    (shelter?'<div class="card" style="padding:12px;"><div style="font-size:.84rem; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:4px;">'+IC.building.replace('currentColor','var(--safe)')+'最近安置点</div><div style="font-size:.84rem; font-weight:500;">'+shelter.name+'</div><div style="font-size:.72rem; color:var(--ink-sub); margin-top:4px;">容量：'+shelter.capacity+' | 已安置：'+shelter.current_count+'</div><div style="font-size:.72rem; color:var(--ink-sub); margin-top:4px;">坐标：'+shelter.lng.toFixed(4)+', '+shelter.lat.toFixed(4)+'</div></div>':'') +
+    // 转移路线
+    (tt?'<div class="card" style="padding:12px;"><div style="font-size:.84rem; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:4px;">'+IC.nav+'转移路线</div><div style="font-size:.72rem; color:var(--ink-sub); line-height:1.6; display:flex; flex-direction:column; gap:6px;"><div>安置点：<span style="color:var(--ink); font-weight:500;">'+tt.shelterName+'</span></div><div>负责人员：<span style="color:var(--ink);">'+tt.responsible+'</span></div><div style="display:flex; flex-direction:column; gap:4px; margin-top:4px;">'+tt.routes.map((r,i)=>'<div style="display:flex; gap:6px;"><span style="color:var(--accent); font-weight:700;">'+(i+1)+'.</span><span>'+r+'</span></div>').join('')+'</div></div></div>':'') +
+    '<button class="btn-primary" style="width:100%;" onclick="villagerNav(\'home\')">返回首页</button>' +
+    '</div>';
+}
+function renderVilRegister(c){
+  c.innerHTML =
+    '<div style="display:flex; flex-direction:column; gap:12px;" class="animate-fade-in">' +
+    '<div style="font-size:1rem; font-weight:700; padding:0 4px;">安置点登记</div>' +
+    '<div class="card" style="padding:12px;"><div style="display:flex; align-items:center; gap:8px; font-size:.84rem; font-weight:700;">'+IC.mapPin.replace('currentColor','var(--primary)')+'安置点信息</div><div style="margin-top:8px; font-size:.72rem; color:var(--ink-sub); background:var(--bg); border-radius:8px; padding:8px 12px;">点击下方「确认登记」即可完成安置点登记，系统将自动记录您的信息并通知指挥部。</div></div>' +
+    '<div class="card" style="padding:12px; display:flex; flex-direction:column; gap:12px;">' +
+      mField('姓名', '<input id="vrName" class="input-field" placeholder="请输入姓名" value="'+esc(currentUser.name)+'">') +
+      mField('手机号', '<input id="vrPhone" class="input-field" type="tel" placeholder="请输入手机号" value="'+esc(currentUser.phone)+'">') +
+      mField('同行人数', '<div style="display:flex; align-items:center; gap:8px;"><button onclick="vrComp(Math.max(1,Number($(\'vrComp\').value)-1))" style="width:36px; height:36px; border-radius:8px; background:var(--bg); font-weight:700; font-size:1.1rem;">-</button><input id="vrComp" class="input-field" type="number" min="1" value="1" style="text-align:center; font-weight:700;"><button onclick="vrComp(Number($(\'vrComp\').value)+1)" style="width:36px; height:36px; border-radius:8px; background:var(--bg); font-weight:700; font-size:1.1rem;">+</button></div>') +
+    '</div>' +
+    '<button class="btn-safe" style="width:100%; height:56px; font-size:1rem;" onclick="doVilRegister()">确认登记</button>' +
+    '<button class="btn-secondary" style="width:100%;" onclick="villagerNav(\'home\')">返回首页</button>' +
+    '</div>';
+}
+function vrComp(n){ $('vrComp').value = Math.max(1,n); }
+function mField(label, inner){ return '<div><div style="display:flex; align-items:center; gap:6px; margin-bottom:6px; font-size:.84rem; color:var(--ink-sub);">'+label+'</div>'+inner+'</div>'; }
+function doVilRegister(){
+  const name = $('vrName').value.trim(), phone = $('vrPhone').value.trim();
+  if(!name){ showToast('请输入姓名','err'); return; }
+  if(!phone){ showToast('请输入手机号','err'); return; }
+  showToast('登记成功，请尽快前往安置点','ok');
+  villagerNav('home');
+}
+function renderVilReport(c){
+  const u = currentUser;
+  const records = DB.agriculture_records.filter(r=>r.village_id===u.village_id);
+  let injury='none', mats=[];
+  c.innerHTML =
+    '<div style="display:flex; flex-direction:column; gap:12px;" class="animate-fade-in">' +
+    '<div style="font-size:1rem; font-weight:700; padding:0 4px;">伤情 / 物资上报</div>' +
+    // 伤情等级
+    '<div class="card" style="padding:12px;"><div style="font-size:.84rem; font-weight:700; margin-bottom:8px;">伤情等级</div><div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;" id="vrInjury">' +
+      ['none','minor','severe'].map(l=>{ const cfg=ICfg[l]; return '<button onclick="setInjury(\''+l+'\')" data-l="'+l+'" style="height:64px; border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; color:#fff; font-weight:700; font-size:.82rem; background:'+cfg.color+'; opacity:.6;">'+cfg.label+'</button>'; }).join('') +
+    '</div></div>' +
+    // 物资需求
+    '<div class="card" style="padding:12px;"><div style="font-size:.84rem; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:4px;">'+IC.pkg.replace('currentColor','var(--accent)')+'物资需求（可多选）</div><div style="display:flex; flex-wrap:wrap; gap:8px;" id="vrMats">' +
+      ['急救药品','饮用水','食品','保暖物资','其他'].map(m=>'<button onclick="toggleMat(this,\''+m+'\')" data-m="'+m+'" style="height:36px; padding:0 16px; border-radius:8px; font-size:.84rem; font-weight:500; background:var(--bg); color:var(--ink-sub); border:1px solid var(--border);">'+m+'</button>').join('') +
+    '</div></div>' +
+    // 灾情确认
+    (records.length? '<div class="card" style="padding:12px;"><div style="font-size:.84rem; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:4px;">'+IC.check.replace('currentColor','var(--safe)')+'灾情损失确认</div><div style="font-size:.72rem; color:var(--ink-sub); margin-bottom:8px;">统计员已登记以下灾情损失，请核实后确认</div><div style="display:flex; flex-direction:column; gap:8px;">'+records.map(r=>'<div style="border:1px solid var(--border); border-radius:8px; padding:10px; background:rgba(245,247,250,.5);"><div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span style="font-size:.84rem; font-weight:700;">'+r.villager_name+'</span><span style="font-size:.64rem; color:var(--ink-sub);">'+timeAgo(r.created_at)+'</span></div><div style="font-size:.72rem; color:var(--ink-sub);">'+(r.crop_type?'<div>'+IC.sprout+' '+r.crop_type+' '+r.crop_area+'亩 · 损失 ¥'+(r.crop_loss||0).toLocaleString()+'</div>':'')+(r.livestock_type?'<div>'+r.livestock_type+' '+r.livestock_dead+'/'+r.livestock_original+'头 · 损失 ¥'+(r.livestock_loss||0).toLocaleString()+'</div>':'')+'</div><div style="margin-top:8px;" id="agriConf-'+r.id+'">'+(r.confirmed?'<div style="display:flex; align-items:center; gap:4px; font-size:.72rem; color:var(--safe); font-weight:700;">'+IC.check+'已确认</div>':'<button onclick="confirmAgri(\''+r.id+'\')" style="height:32px; padding:0 16px; border-radius:8px; background:var(--safe); color:#fff; font-size:.72rem; font-weight:700; display:flex; align-items:center; gap:4px;">'+IC.check+'确认无误</button>')+'</div></div>').join('')+'</div></div>':'') +
+    '<button class="btn-accent" style="width:100%; height:56px; font-size:1rem;" onclick="doVilReport()">确认上报</button>' +
+    '<button class="btn-secondary" style="width:100%;" onclick="villagerNav(\'home\')">返回首页</button>' +
+    '</div>';
+  vrData = {injury:'none', mats:[]};
+  setInjury('none');
+}
+let vrData = {injury:'none', mats:[]};
+function setInjury(l){
+  vrData.injury = l;
+  document.querySelectorAll('#vrInjury button').forEach(b=>{ b.style.opacity = b.dataset.l===l?'1':'.6'; b.style.outline = b.dataset.l===l?'3px solid '+ICfg[l].color:'none'; b.style.outlineOffset='2px'; });
+}
+function toggleMat(btn, m){
+  const i = vrData.mats.indexOf(m);
+  if(i>=0){ vrData.mats.splice(i,1); btn.style.background='var(--bg)'; btn.style.color='var(--ink-sub)'; btn.style.border='1px solid var(--border)'; btn.textContent=m; }
+  else { vrData.mats.push(m); btn.style.background='var(--accent)'; btn.style.color='#fff'; btn.style.border='none'; btn.textContent='✓ '+m; }
+}
+function confirmAgri(id){
+  const r = DB.agriculture_records.find(x=>x.id===id);
+  if(r){ r.confirmed=true; r.confirmed_at=new Date().toISOString(); r.confirmed_by=currentUser.name; }
+  const el = $('agriConf-'+id);
+  if(el) el.innerHTML = '<div style="display:flex; align-items:center; gap:4px; font-size:.72rem; color:var(--safe); font-weight:700;">'+IC.check+'已确认</div>';
+  showToast('已确认 '+r.villager_name+' 的灾情损失记录','ok');
+}
+function doVilReport(){
+  showToast('上报成功，您的信息已上报，救援人员将尽快响应','ok');
+  villagerNav('home');
+}
+
+/* ============================================================
+   救援端（移动端）
+   ============================================================ */
+let resTab = 'all';
+let resDetailId = null;
+function rescueNav(page, id){
+  const c = $('rescueContent');
+  if(page==='list') renderRescueList(c);
+  else if(page==='detail'){ resDetailId=id; renderRescueDetail(c, id); }
+}
+function renderRescueList(c){
+  const tasks = DB.rescue_tasks.filter(t=>t.team_id===currentUser.team_id);
+  const wt = {all:0,dispatched:0,progress:0,completed:0};
+  tasks.forEach(t=>{ wt.all++; if(t.status==='dispatched')wt.dispatched++; else if(t.status==='enroute'||t.status==='arrived')wt.progress++; else if(t.status==='completed')wt.completed++; });
+  let filtered = tasks;
+  if(resTab==='dispatched') filtered=tasks.filter(t=>t.status==='dispatched');
+  else if(resTab==='progress') filtered=tasks.filter(t=>t.status==='enroute'||t.status==='arrived');
+  else if(resTab==='completed') filtered=tasks.filter(t=>t.status==='completed');
+  const w = {dispatched:0,enroute:1,arrived:2,pending:3,completed:4,cancelled:5};
+  filtered = filtered.slice().sort((a,b)=>w[a.status]-w[b.status]);
+
+  c.innerHTML =
+    '<div style="padding-bottom:24px;">' +
+    '<div style="position:sticky; top:0; z-index:10; background:var(--bg); padding:8px 12px; display:flex; gap:8px; overflow-x:auto;">' +
+      [['all','全部'],['dispatched','待出发'],['progress','执行中'],['completed','已完成']].map(t=>'<button onclick="resTab=\''+t[0]+'\';rescueNav(\'list\')" style="flex-shrink:0; height:32px; padding:0 12px; border-radius:8px; font-size:.72rem; font-weight:500; display:flex; align-items:center; gap:4px; '+(resTab===t[0]?'background:var(--warn-orange); color:#fff;':'background:#fff; color:var(--ink-sub); border:1px solid var(--border);')+'">'+t[1]+'<span style="font-size:.64rem;">'+wt[t[0]]+'</span></button>').join('') +
+    '</div>' +
+    '<div style="padding:12px; margin-top:4px; display:flex; flex-direction:column; gap:12px;">' +
+      (filtered.length? filtered.map(t=>{ const cfg={label:TSK_LABEL[t.status],cls:'background:rgba(245,124,0,.1); color:var(--warn-orange);'}; if(t.status==='completed')cfg.cls='background:rgba(39,174,96,.1); color:var(--safe);'; if(t.status==='dispatched')cfg.cls='background:rgba(25,118,210,.1); color:var(--warn-blue);'; return '<button onclick="rescueNav(\'detail\',\''+t.id+'\')" style="width:100%; text-align:left; padding:12px; background:#fff; border-radius:14px; box-shadow:0 1px 4px rgba(0,0,0,.06);"><div style="display:flex; justify-content:space-between; gap:8px;"><div style="display:flex; align-items:center; gap:8px; min-width:0;"><div style="width:36px; height:36px; border-radius:50%; background:rgba(245,124,0,.1); color:var(--warn-orange); display:flex; align-items:center; justify-content:center; font-weight:700;">'+t.target_name.charAt(0)+'</div><div style="min-width:0;"><div style="font-weight:700; font-size:.84rem;">'+t.target_name+'</div></div></div>'+injuryBadge(t.injury_level)+'</div><div style="margin-top:8px; display:flex; flex-direction:column; gap:4px; font-size:.72rem; color:var(--ink-sub);">'+(t.village_name?'<div style="display:flex; align-items:center; gap:4px;">'+IC.mapPin+'<span>'+t.village_name+'</span></div>':'')+(t.material_needs?'<div style="display:flex; align-items:center; gap:4px;">'+IC.pkg+'<span>物资需求：'+t.material_needs+'</span></div>':'')+'<div style="display:flex; align-items:center; gap:4px;">'+IC.clock+'<span>派发：'+fmtTime(t.created_at)+'</span>'+(t.eta_minutes?'<span style="margin-left:8px; color:var(--accent); font-weight:500;">预计 '+Math.round(t.eta_minutes/60)+' 小时</span>':'')+'</div></div><div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;"><span class="tag" style="'+cfg.cls+'; font-weight:700;">'+cfg.label+'</span><span style="font-size:.68rem; color:var(--ink-sub); display:flex; align-items:center; gap:2px;">查看 '+IC.chevR+'</span></div></button>'; }).join('') : '<div style="text-align:center; color:var(--ink-sub); padding:48px; font-size:.88rem;">暂无救援任务</div>') +
+    '</div></div>';
+}
+function renderRescueDetail(c, id){
+  const t = DB.rescue_tasks.find(x=>x.id===id);
+  if(!t){ c.innerHTML='<div class="card" style="margin:12px; padding:24px; text-align:center; color:var(--warn-red);">任务不存在</div>'; return; }
+  const SLABEL={pending:'待分配',dispatched:'待出发',enroute:'执行中',arrived:'执行中',completed:'已完成',cancelled:'已撤销'};
+  let actionBtn = '';
+  if(t.status==='dispatched') actionBtn='<button class="btn-accent" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px;" onclick="taskAction(\''+t.id+'\',\'enroute\',\'出发\')">'+IC.nav+'出发</button>';
+  else if(t.status==='enroute') actionBtn='<button class="btn-primary" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px;" onclick="taskAction(\''+t.id+'\',\'arrived\',\'抵达签到\')">'+IC.mapPin+'抵达签到</button>';
+  else if(t.status==='arrived') actionBtn='<button class="btn-safe" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px;" onclick="taskAction(\''+t.id+'\',\'completed\',\'完成任务\')">'+IC.check+'完成任务</button>';
+  else actionBtn='<div style="flex:1; height:44px; border-radius:10px; background:rgba(39,174,96,.1); color:var(--safe); font-weight:700; display:flex; align-items:center; justify-content:center; gap:8px;">'+IC.check+'任务已完成</div>';
+
+  c.innerHTML =
+    '<div style="display:flex; flex-direction:column; min-height:calc(100vh - 56px);">' +
+    '<div style="height:48px; background:#fff; border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 8px; gap:8px; position:sticky; top:0; z-index:50;"><button onclick="rescueNav(\'list\')" style="display:flex; align-items:center; gap:4px; font-size:.84rem; color:var(--ink-sub);">'+IC.chevL+'返回</button><div style="font-weight:700; font-size:.84rem; flex:1; text-align:center; padding-right:32px;">任务详情 · '+SLABEL[t.status]+'</div></div>' +
+    // 路线示意图
+    '<div style="height:35vh; min-height:200px; background:linear-gradient(135deg,#0a2540,#0f3a5f); position:relative; display:flex; align-items:center; justify-content:center;">' +
+      '<svg viewBox="0 0 300 200" style="width:90%; height:90%;"><circle cx="50" cy="150" r="8" fill="#F57C00"/><text x="20" y="175" fill="#fff" font-size="10">救援队</text><circle cx="250" cy="50" r="8" fill="#E62020"/><text x="230" y="40" fill="#fff" font-size="10">目标</text><path d="M50 150 Q120 80 250 50" fill="none" stroke="#2E7DFF" stroke-width="3" stroke-dasharray="6 4"/></svg>' +
+    '</div>' +
+    '<div style="flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:12px;">' +
+      // 目标信息
+      '<div class="card" style="padding:12px;"><div style="display:flex; justify-content:space-between; gap:8px;"><div style="display:flex; align-items:center; gap:8px; min-width:0;"><div style="width:40px; height:40px; border-radius:50%; background:rgba(230,32,32,.1); color:var(--warn-red); display:flex; align-items:center; justify-content:center;">'+IC.alert+'</div><div style="min-width:0;"><div style="font-weight:700; font-size:.84rem;">'+t.target_name+'</div></div></div>'+injuryBadge(t.injury_level)+'</div><div style="margin-top:8px; display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:.72rem;"><div style="background:var(--bg); border-radius:8px; padding:6px 8px;"><div style="color:var(--ink-sub); font-size:.64rem;">经度</div><div style="font-family:monospace;">'+t.target_lng.toFixed(6)+'</div></div><div style="background:var(--bg); border-radius:8px; padding:6px 8px;"><div style="color:var(--ink-sub); font-size:.64rem;">纬度</div><div style="font-family:monospace;">'+t.target_lat.toFixed(6)+'</div></div></div>'+(t.village_name?'<div style="margin-top:8px; font-size:.72rem; color:var(--ink-sub); display:flex; align-items:center; gap:4px;">'+IC.mapPin+t.village_name+'</div>':'')+'</div>' +
+      (t.material_needs?'<div class="card" style="padding:12px;"><div style="font-size:.76rem; font-weight:700; display:flex; align-items:center; gap:4px; margin-bottom:4px;">'+IC.pkg+'物资需求</div><div style="font-size:.84rem;">'+t.material_needs+'</div></div>':'') +
+      (t.hazard_note?'<div style="border-radius:14px; border:1px solid rgba(230,32,32,.3); background:rgba(230,32,32,.05); padding:12px;"><div style="font-size:.76rem; font-weight:700; color:var(--warn-red); display:flex; align-items:center; gap:4px; margin-bottom:4px;">'+IC.alert+'危险提示</div><div style="font-size:.84rem; color:var(--warn-red);">'+t.hazard_note+'</div></div>':'') +
+      (t.forbidden_routes?'<div class="card" style="padding:12px;"><div style="font-size:.76rem; font-weight:700; color:var(--warn-orange); display:flex; align-items:center; gap:4px; margin-bottom:4px;">'+IC.alert+'禁止通行路线</div><div style="font-size:.84rem;">'+t.forbidden_routes+'</div></div>':'') +
+      (t.optimal_route?'<div class="card" style="padding:12px;"><div style="font-size:.76rem; font-weight:700; color:var(--accent); display:flex; align-items:center; gap:4px; margin-bottom:4px;">'+IC.nav+'推荐最优路线</div><div style="font-size:.84rem;">'+t.optimal_route+'</div></div>':'') +
+      '<div class="card" style="padding:12px; font-size:.72rem; color:var(--ink-sub); display:flex; flex-direction:column; gap:4px;"><div style="display:flex; align-items:center; gap:4px;">'+IC.clock+'派发时间：'+fmtTime(t.created_at)+'</div>'+(t.completed_at?'<div style="display:flex; align-items:center; gap:4px;">'+IC.check+'完成时间：'+fmtTime(t.completed_at)+'</div>':'')+(t.eta_minutes?'<div style="display:flex; align-items:center; gap:4px;">'+IC.nav+'预计耗时：'+Math.round(t.eta_minutes/60)+' 小时</div>':'')+'</div>' +
+    '</div>' +
+    '<div style="position:sticky; bottom:0; width:100%; background:#fff; border-top:1px solid var(--border); padding:12px; z-index:50;">'+actionBtn+'</div>' +
+    '</div>';
+}
+function taskAction(id, next, label){
+  if(!confirm('确认执行「'+label+'」操作？')) return;
+  const t = DB.rescue_tasks.find(x=>x.id===id);
+  if(t){ t.status=next; if(next==='completed') t.completed_at=new Date().toISOString(); }
+  showToast('已执行「'+label+'」操作','ok');
+  renderRescueDetail($('rescueContent'), id);
+}
+
+/* ============================================================
+   农业统计端（移动端）
+   ============================================================ */
+let agriPage = 'form';
+function agriNav(page){
+  agriPage = page;
+  renderAgriNav();
+  const c = $('agriContent');
+  if(page==='form') renderAgriForm(c);
+  else if(page==='ledger') renderAgriLedger(c);
+}
+function renderAgriNav(){
+  $('agriNav').innerHTML =
+    '<button onclick="agriNav(\'form\')" class="'+(agriPage==='form'?'active':'')+'">'+IC.fileText+'<span>灾情登记</span></button>' +
+    '<button onclick="agriNav(\'ledger\')" class="'+(agriPage==='ledger'?'active':'')+'">'+IC.book+'<span>灾情台账</span></button>';
+}
+function renderAgriForm(c){
+  const total = DB.agriculture_records.reduce((s,r)=>s+(r.crop_loss||0)+(r.livestock_loss||0),0);
+  const cropL = DB.agriculture_records.reduce((s,r)=>s+(r.crop_loss||0),0);
+  const liveL = DB.agriculture_records.reduce((s,r)=>s+(r.livestock_loss||0),0);
+  c.innerHTML =
+    '<div style="display:flex; flex-direction:column; gap:12px; padding-bottom:16px;">' +
+    '<h1 style="font-size:1.1rem; font-weight:700;">灾情登记</h1>' +
+    // 汇总
+    '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">' +
+      mStatCard('总损失金额', '¥'+total.toLocaleString(), '#E62020') + mStatCard('受灾户数', DB.agriculture_records.length+'户', '#005288') +
+      mStatCard('种植业损失', '¥'+cropL.toLocaleString(), '#F57C00') + mStatCard('养殖业损失', '¥'+liveL.toLocaleString(), '#1976D2') +
+    '</div>' +
+    // 表单
+    '<div class="card" style="padding:12px;"><div style="font-size:.84rem; font-weight:700; display:flex; align-items:center; gap:6px; margin-bottom:10px;"><span style="width:20px; height:20px; border-radius:50%; background:var(--primary); color:#fff; font-size:.68rem; display:flex; align-items:center; justify-content:center;">1</span>村民信息</div><div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">'+mField2('姓名 *','<input id="agName" class="input-field" placeholder="请输入">')+mField2('村组 *','<select id="agVillage" class="input-field"><option value="">请选择</option>'+DB.villages.map(v=>'<option value="'+v.id+'">'+v.name+'</option>').join('')+'</select>')+'</div></div>' +
+    '<div class="card" style="padding:12px;"><div style="font-size:.84rem; font-weight:700; display:flex; align-items:center; gap:6px; margin-bottom:10px;"><span style="width:20px; height:20px; border-radius:50%; background:var(--warn-orange); color:#fff; font-size:.68rem; display:flex; align-items:center; justify-content:center;">2</span><span style="color:var(--warn-orange);">种植业损失</span></div><div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">'+mField2('作物类型','<input id="agCrop" class="input-field" placeholder="如：水稻">')+mField2('受灾亩数','<input id="agArea" type="number" class="input-field" placeholder="0">')+mField2('损毁程度','<select id="agDegree" class="input-field"><option value="">请选择</option><option>轻度</option><option>中度</option><option>重度</option><option>全部损毁</option></select>')+mField2('经济损失(元)','<input id="agCropLoss" type="number" class="input-field" placeholder="0">')+'</div></div>' +
+    '<div class="card" style="padding:12px;"><div style="font-size:.84rem; font-weight:700; display:flex; align-items:center; gap:6px; margin-bottom:10px;"><span style="width:20px; height:20px; border-radius:50%; background:var(--warn-blue); color:#fff; font-size:.68rem; display:flex; align-items:center; justify-content:center;">3</span><span style="color:var(--warn-blue);">养殖业损失</span></div><div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">'+mField2('养殖品类','<input id="agLivestock" class="input-field" placeholder="如：生猪">')+mField2('原有存栏量','<input id="agOrig" type="number" class="input-field" placeholder="0">')+mField2('死亡走失','<input id="agDead" type="number" class="input-field" placeholder="0">')+mField2('经济损失(元)','<input id="agLiveLoss" type="number" class="input-field" placeholder="0">')+'</div></div>' +
+    '<button class="btn-primary" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px;" onclick="submitAgri()">'+IC.send.replace('width="18"','width="16"').replace('height="18"','height="16"')+'提交登记</button>' +
+    '<button class="btn-secondary" style="width:100%;" onclick="agriNav(\'form\')">重置</button>' +
+    '</div>';
+}
+function mStatCard(title, val, color){ return '<div class="card" style="padding:12px;"><div style="font-size:1.3rem; font-weight:700; color:'+color+';">'+val+'</div><div style="font-size:.72rem; color:var(--ink-sub); margin-top:2px;">'+title+'</div></div>'; }
+function mField2(label, inner){ return '<div><label style="display:block; font-size:.72rem; color:var(--ink-sub); margin-bottom:4px;">'+label+'</label>'+inner+'</div>'; }
+function submitAgri(){
+  const name=$('agName').value.trim(), vid=$('agVillage').value;
+  if(!name){ showToast('请填写村民姓名','err'); return; }
+  if(!vid){ showToast('请选择村组','err'); return; }
+  const v = DB.villages.find(x=>x.id===vid);
+  DB.agriculture_records.unshift({
+    id:'A'+Date.now(), villager_name:name, village_id:vid, village_name:v.name, township:v.township,
+    crop_type:$('agCrop').value||undefined, crop_area:Number($('agArea').value)||undefined,
+    crop_damage:$('agDegree').value||undefined, crop_loss:Number($('agCropLoss').value)||undefined,
+    livestock_type:$('agLivestock').value||undefined, livestock_original:Number($('agOrig').value)||undefined,
+    livestock_dead:Number($('agDead').value)||undefined, livestock_loss:Number($('agLiveLoss').value)||undefined,
+    created_at:new Date().toISOString(), confirmed:false,
+  });
+  showToast('灾情登记成功','ok');
+  agriNav('form');
+}
+function renderAgriLedger(c){
+  c.innerHTML =
+    '<div style="padding-bottom:16px;">' +
+    '<div style="display:flex; align-items:center; gap:8px; padding:0 4px 12px;">'+IC.book+'<h1 style="font-size:1.1rem; font-weight:700;">灾情台账</h1><span class="tag" style="background:var(--bg); color:var(--ink-sub);">共 '+DB.agriculture_records.length+' 条</span></div>' +
+    '<div style="display:flex; flex-direction:column; gap:10px;">' +
+      DB.agriculture_records.map(r=>{ const total=(r.crop_loss||0)+(r.livestock_loss||0); return '<div class="card" style="padding:12px;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><span style="font-weight:700;">'+r.villager_name+'</span>'+(r.confirmed?'<span style="font-size:.72rem; color:var(--safe); font-weight:700;">'+IC.check+'已确认</span>':'<span style="font-size:.72rem; color:var(--warn-orange); font-weight:700;">待确认</span>')+'</div><div style="font-size:.72rem; color:var(--ink-sub); display:flex; flex-direction:column; gap:2px;"><div>'+(r.village_name||'-')+' · '+fmtTime(r.created_at)+'</div>'+(r.crop_type?'<div>种植：'+r.crop_type+(r.crop_area?' · '+r.crop_area+'亩':'')+' · ¥'+(r.crop_loss||0).toLocaleString()+'</div>':'')+(r.livestock_type?'<div>养殖：'+r.livestock_type+(r.livestock_dead!=null?' · 亡'+r.livestock_dead+'/'+(r.livestock_original||0):'')+' · ¥'+(r.livestock_loss||0).toLocaleString()+'</div>':'')+'</div><div style="margin-top:6px; padding-top:6px; border-top:1px solid var(--border); display:flex; justify-content:space-between;"><span style="font-size:.72rem; color:var(--ink-sub);">总损失</span><span style="font-size:.88rem; font-weight:700; color:var(--warn-red);">¥'+total.toLocaleString()+'</span></div></div>'; }).join('') +
+      (DB.agriculture_records.length===0?'<div style="text-align:center; color:var(--ink-sub); padding:48px; font-size:.88rem;">暂无灾情记录</div>':'') +
+    '</div></div>';
+}
+
+/* ============================================================
+   初始化
+   ============================================================ */
+renderLogin();
+</script>
+</body>
+</html>

@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>防汛应急·救援队端</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root {
+  --danger:#D32F2F; --danger-bg:#FFEBEE; --warn:#F57C00; --warn-bg:#FFF3E0;
+  --safe:#2E7D32; --safe-bg:#E8F5E9; --primary:#1565C0; --primary-bg:#E3F2FD;
+  --text:#1A2B40; --text2:#5A6B80; --bg:#F0F2F5; --card:#FFFFFF; --border:#E0E0E0;
+}
+body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; background:#222; color:var(--text); display:flex; justify-content:center; min-height:100vh; }
+.phone { width:390px; height:844px; background:var(--bg); position:relative; overflow:hidden; box-shadow:0 0 40px rgba(0,0,0,.5); }
+.screen { width:100%; height:100%; overflow-y:auto; overflow-x:hidden; position:relative; }
+.screen::-webkit-scrollbar { display:none; }
+
+/* 状态栏 */
+.statusbar { height:44px; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:space-between; padding:0 20px; font-size:14px; font-weight:600; position:sticky; top:0; z-index:100; }
+.statusbar .time { font-size:15px; }
+
+/* 页面 */
+.page { display:none; min-height:calc(100% - 44px); padding-bottom:80px; }
+.page.active { display:block; animation:slideIn .3s ease; }
+@keyframes slideIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+
+/* 页面标题栏 */
+.page-header { background:var(--primary); color:#fff; padding:12px 16px; display:flex; align-items:center; gap:12px; position:sticky; top:44px; z-index:99; }
+.page-header .back { font-size:20px; cursor:pointer; padding:4px; }
+.page-header .title { font-size:17px; font-weight:600; flex:1; }
+.page-header .action { font-size:13px; opacity:.9; cursor:pointer; }
+
+/* 队长信息卡 */
+.captain-card { background:linear-gradient(135deg,#1565C0,#0D47A1); color:#fff; padding:16px 20px; }
+.captain-card .cc-row { display:flex; align-items:center; gap:12px; }
+.captain-card .avatar { width:52px; height:52px; border-radius:50%; background:rgba(255,255,255,.2); display:flex; align-items:center; justify-content:center; font-size:26px; }
+.captain-card .cc-info h2 { font-size:17px; margin-bottom:2px; }
+.captain-card .cc-info p { font-size:12px; opacity:.85; }
+.captain-card .cc-status { margin-left:auto; text-align:right; }
+.captain-card .cc-status .dot { display:inline-block; width:8px; height:8px; background:#4CAF50; border-radius:50%; margin-right:4px; animation:pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.captain-card .cc-status .s-label { font-size:11px; opacity:.85; }
+.captain-card .cc-status .s-value { font-size:14px; font-weight:600; }
+
+/* 统计卡 */
+.stat-row { display:flex; gap:8px; padding:12px; }
+.stat-card { flex:1; background:var(--card); border-radius:10px; padding:12px 8px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+.stat-card .sc-num { font-size:24px; font-weight:700; }
+.stat-card .sc-label { font-size:11px; color:var(--text2); margin-top:2px; }
+
+/* 区块标题 */
+.section-title { padding:8px 16px; font-size:13px; color:var(--text2); font-weight:600; display:flex; justify-content:space-between; align-items:center; }
+.section-title .more { font-size:12px; color:var(--primary); cursor:pointer; }
+
+/* 任务卡 */
+.task-card { background:var(--card); margin:0 12px 10px; border-radius:12px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.06); cursor:pointer; transition:transform .15s; }
+.task-card:active { transform:scale(.98); }
+.task-card .tc-header { padding:14px 16px 8px; display:flex; justify-content:space-between; align-items:flex-start; }
+.task-card .tc-priority { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700; }
+.task-card .tc-priority.urgent { background:var(--danger); color:#fff; }
+.task-card .tc-priority.high { background:var(--warn); color:#fff; }
+.task-card .tc-priority.normal { background:var(--primary); color:#fff; }
+.task-card .tc-status { font-size:12px; padding:2px 8px; border-radius:4px; }
+.task-card .tc-status.pending { background:var(--warn-bg); color:var(--warn); }
+.task-card .tc-status.doing { background:var(--primary-bg); color:var(--primary); }
+.task-card .tc-status.done { background:var(--safe-bg); color:var(--safe); }
+.task-card .tc-body { padding:0 16px 12px; }
+.task-card .tc-title { font-size:16px; font-weight:600; margin-bottom:6px; }
+.task-card .tc-info { display:flex; flex-wrap:wrap; gap:12px; font-size:12px; color:var(--text2); margin-bottom:8px; }
+.task-card .tc-info span { display:flex; align-items:center; gap:3px; }
+.task-card .tc-tags { display:flex; gap:6px; flex-wrap:wrap; }
+.task-card .tc-tag { font-size:11px; padding:2px 8px; border-radius:10px; background:#F5F5F5; color:var(--text2); }
+.task-card .tc-tag.danger { background:var(--danger-bg); color:var(--danger); }
+.task-card .tc-footer { padding:10px 16px; background:#FAFAFA; display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--text2); border-top:1px solid var(--border); }
+
+/* 按钮 */
+.btn { display:block; width:calc(100% - 24px); margin:12px; padding:14px; border:none; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer; transition:opacity .15s; }
+.btn:active { opacity:.85; }
+.btn-primary { background:var(--primary); color:#fff; }
+.btn-danger { background:var(--danger); color:#fff; }
+.btn-success { background:var(--safe); color:#fff; }
+.btn-warn { background:var(--warn); color:#fff; }
+.btn-outline { background:transparent; border:2px solid var(--primary); color:var(--primary); }
+
+/* 任务详情 */
+.detail-section { background:var(--card); margin:0 12px 10px; border-radius:12px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+.detail-section .ds-title { font-size:14px; font-weight:600; margin-bottom:12px; display:flex; align-items:center; gap:6px; }
+.detail-row { display:flex; padding:6px 0; font-size:13px; }
+.detail-row .dr-label { color:var(--text2); width:80px; flex-shrink:0; }
+.detail-row .dr-value { flex:1; font-weight:500; }
+.detail-row .dr-value.danger { color:var(--danger); }
+.detail-row .dr-value.warn { color:var(--warn); }
+
+/* 路线信息 */
+.route-box { background:#F5F7FA; border-radius:8px; padding:12px; margin-top:8px; }
+.route-item { display:flex; align-items:center; gap:10px; padding:6px 0; font-size:13px; }
+.route-item .ri-icon { width:28px; height:28px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.route-item.forbidden .ri-icon { background:var(--danger-bg); color:var(--danger); }
+.route-item.recommended .ri-icon { background:var(--safe-bg); color:var(--safe); }
+.route-item .ri-content { flex:1; }
+.route-item .ri-title { font-weight:600; font-size:13px; }
+.route-item .ri-desc { font-size:11px; color:var(--text2); }
+
+/* 物资清单 */
+.material-list { display:flex; flex-direction:column; gap:8px; }
+material-item { display:flex; align-items:center; gap:10px; padding:8px; background:#FAFAFA; border-radius:8px; }
+.mat-item { display:flex; align-items:center; gap:10px; padding:8px; background:#FAFAFA; border-radius:8px; font-size:13px; }
+.mat-item .mi-icon { font-size:18px; }
+.mat-item .mi-name { flex:1; }
+.mat-item .mi-qty { font-weight:600; color:var(--primary); }
+
+/* 时间线 */
+.timeline { position:relative; padding-left:24px; }
+.timeline::before { content:''; position:absolute; left:7px; top:8px; bottom:8px; width:2px; background:var(--border); }
+.timeline-item { position:relative; padding-bottom:16px; }
+.timeline-item:last-child { padding-bottom:0; }
+.timeline-item::before { content:''; position:absolute; left:-21px; top:4px; width:12px; height:12px; border-radius:50%; background:var(--border); border:2px solid #fff; }
+.timeline-item.done::before { background:var(--safe); }
+.timeline-item.active::before { background:var(--primary); box-shadow:0 0 0 4px var(--primary-bg); }
+.timeline-item .ti-time { font-size:11px; color:var(--text2); }
+.timeline-item .ti-title { font-size:13px; font-weight:600; margin:2px 0; }
+.timeline-item .ti-desc { font-size:12px; color:var(--text2); }
+
+/* 表单 */
+.form-group { background:var(--card); margin:0 12px 8px; border-radius:12px; padding:16px; }
+.form-label { font-size:13px; color:var(--text2); margin-bottom:8px; display:block; font-weight:600; }
+.form-input, .form-textarea { width:100%; padding:12px; border:1px solid var(--border); border-radius:8px; font-size:14px; background:#FAFAFA; font-family:inherit; }
+.form-textarea { min-height:80px; resize:none; }
+.chip-group { display:flex; flex-wrap:wrap; gap:8px; }
+.chip { padding:8px 16px; border:1px solid var(--border); border-radius:20px; font-size:13px; cursor:pointer; background:#FAFAFA; }
+.chip.selected { background:var(--primary); color:#fff; border-color:var(--primary); }
+
+/* 底部导航 */
+.tabbar { position:absolute; bottom:0; left:0; right:0; height:60px; background:var(--card); border-top:1px solid var(--border); display:flex; z-index:100; }
+.tabbar-item { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; cursor:pointer; color:var(--text2); position:relative; }
+.tabbar-item.active { color:var(--primary); }
+.tabbar-item .ti-icon { font-size:20px; }
+.tabbar-item .ti-label { font-size:10px; }
+.tabbar-item .badge { position:absolute; top:8px; right:50%; margin-right:-20px; background:var(--danger); color:#fff; font-size:9px; min-width:16px; height:16px; border-radius:8px; display:flex; align-items:center; justify-content:center; padding:0 4px; }
+
+/* 弹窗 */
+.modal-overlay { display:none; position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.5); z-index:200; justify-content:center; align-items:center; }
+.modal-overlay.show { display:flex; }
+.modal { background:#fff; width:300px; border-radius:16px; padding:24px; text-align:center; animation:modalIn .3s; }
+@keyframes modalIn { from{opacity:0;transform:scale(.8)} to{opacity:1;transform:scale(1)} }
+.modal .m-icon { font-size:48px; margin-bottom:12px; }
+.modal h3 { font-size:18px; margin-bottom:8px; }
+.modal p { font-size:14px; color:var(--text2); margin-bottom:20px; line-height:1.5; }
+.modal .m-btn { padding:10px 24px; border:none; border-radius:8px; font-size:15px; font-weight:600; cursor:pointer; margin:0 4px; }
+.modal .m-btn-cancel { background:#F5F5F5; color:var(--text2); }
+.modal .m-btn-confirm { background:var(--primary); color:#fff; }
+
+/* 地图占位 */
+.map-placeholder { background:linear-gradient(135deg,#E3F2FD,#BBDEFB); margin:0 12px 10px; border-radius:12px; height:180px; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--primary); font-size:13px; position:relative; overflow:hidden; }
+.map-placeholder .mp-grid { position:absolute; inset:0; background-image:linear-gradient(rgba(21,101,192,.1) 1px,transparent 1px),linear-gradient(90deg,rgba(21,101,192,.1) 1px,transparent 1px); background-size:20px 20px; }
+.map-placeholder .mp-content { position:relative; z-index:1; text-align:center; }
+.map-placeholder .mp-icon { font-size:36px; margin-bottom:8px; }
+.map-placeholder .mp-route { position:absolute; top:40%; left:20%; right:20%; height:3px; background:var(--danger); border-radius:2px; transform:rotate(-15deg); }
+.map-placeholder .mp-start { position:absolute; top:35%; left:18%; width:12px; height:12px; background:var(--safe); border-radius:50%; border:3px solid #fff; box-shadow:0 0 0 2px var(--safe); }
+.map-placeholder .mp-end { position:absolute; top:48%; right:18%; width:12px; height:12px; background:var(--danger); border-radius:50%; border:3px solid #fff; box-shadow:0 0 0 2px var(--danger); }
+</style>
+</head>
+<body>
+<div class="phone">
+<div class="screen">
+
+<!-- 状态栏 -->
+<div class="statusbar">
+  <span class="time">9:41</span>
+  <span style="font-size:13px">防汛应急·救援队端</span>
+  <span style="font-size:12px">📶 🔋</span>
+</div>
+
+<!-- ========== 任务列表页（首页） ========== -->
+<div class="page active" id="page-tasks">
+  <div class="captain-card">
+    <div class="cc-row">
+      <div class="avatar">🦺</div>
+      <div class="cc-info">
+        <h2>李志强 <span style="font-size:12px;opacity:.8">队长</span></h2>
+        <p>云岭镇应急救援队 · 鄂A·E2026</p>
+      </div>
+      <div class="cc-status">
+        <div><span class="dot"></span><span class="s-label">在岗</span></div>
+        <div class="s-value">5人待命</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-card"><div class="sc-num" style="color:var(--danger)">2</div><div class="sc-label">待处理</div></div>
+    <div class="stat-card"><div class="sc-num" style="color:var(--primary)">1</div><div class="sc-label">进行中</div></div>
+    <div class="stat-card"><div class="sc-num" style="color:var(--safe)">8</div><div class="sc-label">已完成</div></div>
+    <div class="stat-card"><div class="sc-num" style="color:var(--text2)">11</div><div class="sc-label">总计</div></div>
+  </div>
+
+  <div class="section-title">
+    <span>任务列表</span>
+    <span class="more" onclick="showModal('筛选功能：全部 / 待出发 / 进行中 / 已完成')">筛选 ›</span>
+  </div>
+
+  <!-- 任务1：紧急 -->
+  <div class="task-card" onclick="go('page-detail1')">
+    <div class="tc-header">
+      <span class="tc-priority urgent">🔴 紧急</span>
+      <span class="tc-status pending">待出发</span>
+    </div>
+    <div class="tc-body">
+      <div class="tc-title">云岭村3组·王建国求助</div>
+      <div class="tc-info">
+        <span>👤 王建国（男·62岁）</span>
+        <span>📞 138-XXXX-1234</span>
+      </div>
+      <div class="tc-info">
+        <span>📍 云岭村3组·距集合点2.1km</span>
+        <span>🕐 09:15 接单</span>
+      </div>
+      <div class="tc-tags">
+        <span class="tc-tag danger">中伤·右腿</span>
+        <span class="tc-tag">需担架</span>
+        <span class="tc-tag">需急救包</span>
+        <span class="tc-tag">4人同行</span>
+      </div>
+    </div>
+    <div class="tc-footer">
+      <span>⏱ 智能体建议：09:25出发 · 09:44到达</span>
+      <span style="color:var(--danger);font-weight:600">立即处理 ›</span>
+    </div>
+  </div>
+
+  <!-- 任务2：高优先级 -->
+  <div class="task-card" onclick="go('page-detail2')">
+    <div class="tc-header">
+      <span class="tc-priority high">🟡 高优</span>
+      <span class="tc-status pending">待出发</span>
+    </div>
+    <div class="tc-body">
+      <div class="tc-title">云岭村5组·物资转运</div>
+      <div class="tc-info">
+        <span>👤 张桂花（女·58岁）</span>
+        <span>📞 139-XXXX-5678</span>
+      </div>
+      <div class="tc-info">
+        <span>📍 云岭村5组·距集合点3.5km</span>
+        <span>🕐 09:20 接单</span>
+      </div>
+      <div class="tc-tags">
+        <span class="tc-tag">物资短缺</span>
+        <span class="tc-tag">需饮用水</span>
+        <span class="tc-tag">需食品</span>
+        <span class="tc-tag">2人同行</span>
+      </div>
+    </div>
+    <div class="tc-footer">
+      <span>⏱ 智能体建议：09:35出发 · 09:55到达</span>
+      <span style="color:var(--warn);font-weight:600">尽快处理 ›</span>
+    </div>
+  </div>
+
+  <!-- 任务3：进行中 -->
+  <div class="task-card" onclick="go('page-detail3')">
+    <div class="tc-header">
+      <span class="tc-priority normal">🔵 常规</span>
+      <span class="tc-status doing">进行中</span>
+    </div>
+    <div class="tc-body">
+      <div class="tc-title">云岭村1组·老人转移</div>
+      <div class="tc-info">
+        <span>👤 刘德福（男·78岁·行动不便）</span>
+      </div>
+      <div class="tc-info">
+        <span>📍 云岭村1组·距集合点1.2km</span>
+        <span>🕐 08:50 出发</span>
+      </div>
+      <div class="tc-tags">
+        <span class="tc-tag">转移中</span>
+        <span class="tc-tag">已到达</span>
+      </div>
+    </div>
+    <div class="tc-footer">
+      <span>⏱ 预计 10:00 完成转移</span>
+      <span style="color:var(--primary);font-weight:600">查看进度 ›</span>
+    </div>
+  </div>
+
+  <!-- 任务4：已完成 -->
+  <div class="task-card" onclick="showModal('该任务已于08:45完成\n\n任务摘要：\n· 求助人：赵小梅（女·35岁）\n· 地点：云岭村2组\n· 内容：转移孕妇及2名儿童\n· 完成时间：08:45\n· 转移至：云岭镇中心小学安置点')">
+    <div class="tc-header">
+      <span class="tc-priority normal">🔵 常规</span>
+      <span class="tc-status done">已完成</span>
+    </div>
+    <div class="tc-body">
+      <div class="tc-title">云岭村2组·赵小梅转移</div>
+      <div class="tc-info">
+        <span>👤 赵小梅（女·35岁·孕妇）</span>
+        <span>✅ 08:45 完成</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 任务详情1：王建国 ========== -->
+<div class="page" id="page-detail1">
+  <div class="page-header">
+    <span class="back" onclick="go('page-tasks')">‹</span>
+    <span class="title">任务详情</span>
+    <span class="action" onclick="showModal('任务编号：YJ-2026-0312')">YJ-0312</span>
+  </div>
+
+  <!-- 状态横幅 -->
+  <div style="background:var(--warn-bg);border-left:4px solid var(--warn);padding:12px 16px;margin:0 0 8px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:20px">⏳</span>
+      <div>
+        <div style="font-size:14px;font-weight:600;color:var(--warn)">待出发</div>
+        <div style="font-size:12px;color:var(--text2)">智能体建议 09:25 出发，剩余 10 分钟</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 求助人信息 -->
+  <div class="detail-section">
+    <div class="ds-title">👤 求助人信息</div>
+    <div class="detail-row"><div class="dr-label">姓名</div><div class="dr-value">王建国（男·62岁）</div></div>
+    <div class="detail-row"><div class="dr-label">联系电话</div><div class="dr-value" style="color:var(--primary)" onclick="showModal('正在拨打 138-XXXX-1234...')">138-XXXX-1234 📞</div></div>
+    <div class="detail-row"><div class="dr-label">伤情等级</div><div class="dr-value warn">🟡 中伤</div></div>
+    <div class="detail-row"><div class="dr-label">伤情描述</div><div class="dr-value">右腿被落石擦伤，行动不便，需担架</div></div>
+    <div class="detail-row"><div class="dr-label">同行人数</div><div class="dr-value">4人（含1老人·行动不便）</div></div>
+  </div>
+
+  <!-- 位置信息 -->
+  <div class="detail-section">
+    <div class="ds-title">📍 位置信息</div>
+    <div class="detail-row"><div class="dr-label">当前位置</div><div class="dr-value">云岭村3组·王建国家</div></div>
+    <div class="detail-row"><div class="dr-label">坐标</div><div class="dr-value">114.32°E, 30.58°N</div></div>
+    <div class="detail-row"><div class="dr-label">距集合点</div><div class="dr-value">2.1km · 步行25分钟 · 车程8分钟</div></div>
+    <div class="map-placeholder">
+      <div class="mp-grid"></div>
+      <div class="mp-route"></div>
+      <div class="mp-start"></div>
+      <div class="mp-end"></div>
+      <div class="mp-content">
+        <div class="mp-icon">🗺️</div>
+        <div>点击查看高德地图导航</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 物资需求 -->
+  <div class="detail-section">
+    <div class="ds-title">📦 物资需求（智能体已备货）</div>
+    <div class="material-list">
+      <div class="mat-item"><span class="mi-icon">🩹</span><span class="mi-name">急救包</span><span class="mi-qty">×1</span></div>
+      <div class="mat-item"><span class="mi-icon">🛏️</span><span class="mi-name">担架</span><span class="mi-qty">×1</span></div>
+      <div class="mat-item"><span class="mi-icon">💧</span><span class="mi-name">饮用水</span><span class="mi-qty">×10瓶</span></div>
+      <div class="mat-item"><span class="mi-icon">🍞</span><span class="mi-name">方便食品</span><span class="mi-qty">×6份</span></div>
+      <div class="mat-item"><span class="mi-icon">🧥</span><span class="mi-name">雨衣</span><span class="mi-qty">×4件</span></div>
+    </div>
+  </div>
+
+  <!-- 路线信息 -->
+  <div class="detail-section">
+    <div class="ds-title">🛣️ 路线信息（智能体规划）</div>
+    <div class="route-box">
+      <div class="route-item forbidden">
+        <div class="ri-icon">🚫</div>
+        <div class="ri-content">
+          <div class="ri-title">云岭村3组→老林沟→镇中心小学</div>
+          <div class="ri-desc">老林沟路段积水深度1.2m，已封路 · 禁止通行</div>
+        </div>
+      </div>
+      <div class="route-item recommended">
+        <div class="ri-icon">✅</div>
+        <div class="ri-content">
+          <div class="ri-title">云岭村3组→村主干道→云岭大道→镇中心小学</div>
+          <div class="ri-desc">推荐路线 · 全程2.1km · 车程8分钟 · 路况良好</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 危险提示 -->
+  <div class="detail-section" style="border-left:4px solid var(--danger)">
+    <div class="ds-title" style="color:var(--danger)">⚠️ 危险提示</div>
+    <div style="font-size:13px;line-height:1.8;color:var(--text)">
+      · 王建国家后山有滑坡风险，转移时请勿停留<br>
+      · 村主干道K1+200处有少量落石，注意避让<br>
+      · 当前降雨强度35mm/h，能见度低，减速慢行<br>
+      · 建议携带对讲机，山区信号不稳定
+    </div>
+  </div>
+
+  <!-- 任务时间 -->
+  <div class="detail-section">
+    <div class="ds-title">⏰ 任务时间</div>
+    <div class="detail-row"><div class="dr-label">接单时间</div><div class="dr-value">09:15</div></div>
+    <div class="detail-row"><div class="dr-label">建议出发</div><div class="dr-value warn">09:25（剩余10分钟）</div></div>
+    <div class="detail-row"><div class="dr-label">预计到达</div><div class="dr-value">09:44</div></div>
+    <div class="detail-row"><div class="dr-label">预计完成</div><div class="dr-value">10:00</div></div>
+  </div>
+
+  <button class="btn btn-danger" onclick="go('page-execute')">立即出发</button>
+  <button class="btn btn-outline" onclick="showModal('已上报指挥中心：请求增援。请等待指挥中心调度。')">请求增援</button>
+</div>
+
+<!-- ========== 任务详情2：张桂花 ========== -->
+<div class="page" id="page-detail2">
+  <div class="page-header">
+    <span class="back" onclick="go('page-tasks')">‹</span>
+    <span class="title">任务详情</span>
+    <span class="action">YJ-0313</span>
+  </div>
+
+  <div style="background:var(--warn-bg);border-left:4px solid var(--warn);padding:12px 16px;margin:0 0 8px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:20px">⏳</span>
+      <div>
+        <div style="font-size:14px;font-weight:600;color:var(--warn)">待出发</div>
+        <div style="font-size:12px;color:var(--text2)">智能体建议 09:35 出发</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="detail-section">
+    <div class="ds-title">👤 求助人信息</div>
+    <div class="detail-row"><div class="dr-label">姓名</div><div class="dr-value">张桂花（女·58岁）</div></div>
+    <div class="detail-row"><div class="dr-label">联系电话</div><div class="dr-value" style="color:var(--primary)" onclick="showModal('正在拨打 139-XXXX-5678...')">139-XXXX-5678 📞</div></div>
+    <div class="detail-row"><div class="dr-label">伤情等级</div><div class="dr-value" style="color:var(--safe)">🟢 无伤</div></div>
+    <div class="detail-row"><div class="dr-label">求助类型</div><div class="dr-value">物资短缺</div></div>
+    <div class="detail-row"><div class="dr-label">同行人数</div><div class="dr-value">2人</div></div>
+  </div>
+
+  <div class="detail-section">
+    <div class="ds-title">📦 物资需求</div>
+    <div class="material-list">
+      <div class="mat-item"><span class="mi-icon">💧</span><span class="mi-name">饮用水</span><span class="mi-qty">×20瓶</span></div>
+      <div class="mat-item"><span class="mi-icon">🍞</span><span class="mi-name">方便食品</span><span class="mi-qty">×10份</span></div>
+      <div class="mat-item"><span class="mi-icon">🧥</span><span class="mi-name">雨衣</span><span class="mi-qty">×2件</span></div>
+      <div class="mat-item"><span class="mi-icon">🔦</span><span class="mi-name">手电筒</span><span class="mi-qty">×1个</span></div>
+    </div>
+  </div>
+
+  <div class="detail-section">
+    <div class="ds-title">📍 位置信息</div>
+    <div class="detail-row"><div class="dr-label">当前位置</div><div class="dr-value">云岭村5组·张桂花家</div></div>
+    <div class="detail-row"><div class="dr-label">距集合点</div><div class="dr-value">3.5km · 车程12分钟</div></div>
+  </div>
+
+  <button class="btn btn-warn" onclick="showModal('已确认出发，任务状态已更新为进行中','出发成功')">立即出发</button>
+</div>
+
+<!-- ========== 任务详情3：刘德福（进行中） ========== -->
+<div class="page" id="page-detail3">
+  <div class="page-header">
+    <span class="back" onclick="go('page-tasks')">‹</span>
+    <span class="title">任务详情</span>
+    <span class="action">YJ-0311</span>
+  </div>
+
+  <div style="background:var(--primary-bg);border-left:4px solid var(--primary);padding:12px 16px;margin:0 0 8px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:20px">🚀</span>
+      <div>
+        <div style="font-size:14px;font-weight:600;color:var(--primary)">进行中</div>
+        <div style="font-size:12px;color:var(--text2)">已到达求助人位置，正在转移</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="detail-section">
+    <div class="ds-title">👤 求助人信息</div>
+    <div class="detail-row"><div class="dr-label">姓名</div><div class="dr-value">刘德福（男·78岁·行动不便）</div></div>
+    <div class="detail-row"><div class="dr-label">联系电话</div><div class="dr-value" style="color:var(--primary)" onclick="showModal('正在拨打...')">137-XXXX-8888 📞</div></div>
+    <div class="detail-row"><div class="dr-label">伤情等级</div><div class="dr-value" style="color:var(--safe)">🟢 无伤</div></div>
+  </div>
+
+  <div class="detail-section">
+    <div class="ds-title">📍 执行进度</div>
+    <div class="timeline">
+      <div class="timeline-item done">
+        <div class="ti-time">08:50</div>
+        <div class="ti-title">已出发</div>
+        <div class="ti-desc">5人救援队+1辆救护车</div>
+      </div>
+      <div class="timeline-item done">
+        <div class="ti-time">09:02</div>
+        <div class="ti-title">到达求助人位置</div>
+        <div class="ti-desc">云岭村1组·刘德福家</div>
+      </div>
+      <div class="timeline-item active">
+        <div class="ti-time">09:15（当前）</div>
+        <div class="ti-title">正在转移</div>
+        <div class="ti-desc">刘德福老人已上车，正在返回安置点</div>
+      </div>
+      <div class="timeline-item">
+        <div class="ti-time">预计 10:00</div>
+        <div class="ti-title">到达安置点</div>
+        <div class="ti-desc">云岭镇中心小学</div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-success" onclick="go('page-complete')">完成上报</button>
+  <button class="btn btn-outline" onclick="showModal('已通知指挥中心：任务进度正常')">上报进度</button>
+</div>
+
+<!-- ========== 执行中页面 ========== -->
+<div class="page" id="page-execute">
+  <div class="page-header">
+    <span class="back" onclick="go('page-detail1')">‹</span>
+    <span class="title">任务执行</span>
+    <span class="action">YJ-0312</span>
+  </div>
+
+  <div style="background:linear-gradient(135deg,#2E7D32,#1B5E20);color:#fff;padding:20px;margin:0 0 8px;text-align:center">
+    <div style="font-size:36px;margin-bottom:8px">🚀</div>
+    <h2 style="font-size:18px;margin-bottom:4px">任务进行中</h2>
+    <p style="font-size:13px;opacity:.9">正在前往云岭村3组·王建国家</p>
+    <div style="margin-top:12px;background:rgba(255,255,255,.15);height:6px;border-radius:3px;overflow:hidden">
+      <div style="width:30%;height:100%;background:#FFC107;border-radius:3px"></div>
+    </div>
+    <div style="font-size:11px;margin-top:6px;opacity:.8">距目标2.1km · 预计8分钟到达</div>
+  </div>
+
+  <div class="detail-section">
+    <div class="ds-title">📋 任务清单</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer">
+        <input type="checkbox" style="width:20px;height:20px" checked>
+        <span style="text-decoration:line-through;color:var(--text2)">确认物资装车（急救包/担架/水/食品）</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer">
+        <input type="checkbox" style="width:20px;height:20px" checked>
+        <span style="text-decoration:line-through;color:var(--text2)">确认车辆状况（鄂A·E2026）</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer">
+        <input type="checkbox" style="width:20px;height:20px" checked>
+        <span style="text-decoration:line-through;color:var(--text2)">通知求助人预计到达时间</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer">
+        <input type="checkbox" style="width:20px;height:20px" onclick="if(this.checked){this.parentElement.style.opacity=.5}">
+        <span>沿推荐路线行进（避开老林沟）</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer">
+        <input type="checkbox" style="width:20px;height:20px" onclick="if(this.checked){this.parentElement.style.opacity=.5}">
+        <span>到达后评估伤情并处理伤口</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer">
+        <input type="checkbox" style="width:20px;height:20px" onclick="if(this.checked){this.parentElement.style.opacity=.5}">
+        <span>协助4人上车，转移至安置点</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer">
+        <input type="checkbox" style="width:20px;height:20px" onclick="if(this.checked){this.parentElement.style.opacity=.5}">
+        <span>到达安置点，交接登记</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="detail-section">
+    <div class="ds-title">📞 快捷操作</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button class="btn btn-outline" style="margin:0;font-size:13px;padding:10px" onclick="showModal('正在拨打王建国...')">📞 联系求助人</button>
+      <button class="btn btn-outline" style="margin:0;font-size:13px;padding:10px" onclick="showModal('正在联系指挥中心...')">📞 联系指挥中心</button>
+      <button class="btn btn-outline" style="margin:0;font-size:13px;padding:10px" onclick="showModal('已开启实时位置共享')">📍 位置共享</button>
+      <button class="btn btn-outline" style="margin:0;font-size:13px;padding:10px" onclick="showModal('已上报安全状态')">✅ 安全上报</button>
+    </div>
+  </div>
+
+  <button class="btn btn-success" onclick="go('page-complete')">到达目的地·完成上报</button>
+</div>
+
+<!-- ========== 完成上报页 ========== -->
+<div class="page" id="page-complete">
+  <div class="page-header">
+    <span class="back" onclick="go('page-execute')">‹</span>
+    <span class="title">完成上报</span>
+  </div>
+
+  <div style="background:linear-gradient(135deg,#2E7D32,#1B5E20);color:#fff;padding:24px;margin:0 0 8px;text-align:center">
+    <div style="font-size:48px;margin-bottom:8px">✅</div>
+    <h2 style="font-size:18px">任务即将完成</h2>
+    <p style="font-size:13px;opacity:.9;margin-top:4px">请填写完成报告</p>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">任务结果</label>
+    <div class="chip-group">
+      <div class="chip selected" onclick="selectChip(this)">✅ 顺利完成</div>
+      <div class="chip" onclick="selectChip(this)">⚠️ 部分完成</div>
+      <div class="chip" onclick="selectChip(this)">❌ 无法完成</div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">转移人数</label>
+    <input class="form-input" type="number" value="4">
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">伤员处理情况</label>
+    <textarea class="form-textarea">王建国右腿伤口已消毒包扎，无大碍。其余3人无伤情。已全部转移至云岭镇中心小学安置点，登记码YL-2026-0427。</textarea>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">物资使用情况</label>
+    <div style="font-size:13px;line-height:2;color:var(--text)">
+      · 急救包 ×1（已使用）<br>
+      · 担架 ×1（已使用·归还）<br>
+      · 饮用水 ×10瓶（已发放）<br>
+      · 方便食品 ×6份（已发放）<br>
+      · 雨衣 ×4件（已发放）
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">现场照片（可添加）</label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div style="width:80px;height:80px;background:#F5F5F5;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer" onclick="showModal('照片已上传')">📷</div>
+      <div style="width:80px;height:80px;background:#F5F5F5;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer" onclick="showModal('照片已上传')">📷</div>
+      <div style="width:80px;height:80px;background:var(--primary-bg);border-radius:8px;border:2px dashed var(--primary);display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--primary);cursor:pointer" onclick="showModal('相机功能演示')">+</div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">备注</label>
+    <textarea class="form-textarea" placeholder="其他需要上报的情况...">王建国家后山有滑坡迹象，建议后续关注。村主干道K1+200处落石已清理。</textarea>
+  </div>
+
+  <button class="btn btn-success" onclick="showModal('任务完成报告已提交！\n\n· 转移人数：4人\n· 完成时间：10:02\n· 智能体已自动归档\n· 指挥中心已收到通知','提交成功');setTimeout(function(){go('page-tasks')},1500)">提交完成报告</button>
+</div>
+
+<!-- ========== 队伍管理页 ========== -->
+<div class="page" id="page-team">
+  <div class="page-header">
+    <span class="back" onclick="go('page-tasks')">‹</span>
+    <span class="title">队伍管理</span>
+  </div>
+
+  <div class="detail-section" style="margin-top:12px">
+    <div class="ds-title">🦺 救援队成员（5人）</div>
+    <div class="list-card" style="margin:0;box-shadow:none">
+      <div class="task-card" style="margin:0 0 8px;cursor:default">
+        <div class="tc-body" style="padding:12px 16px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--primary-bg);display:flex;align-items:center;justify-content:center">👨</div>
+            <div style="flex:1">
+              <div style="font-size:14px;font-weight:600">李志强 <span style="font-size:11px;color:var(--primary)">队长</span></div>
+              <div style="font-size:12px;color:var(--text2)">应急管理局 · 10年经验</div>
+            </div>
+            <span style="font-size:11px;color:var(--safe)">● 在岗</span>
+          </div>
+        </div>
+      </div>
+      <div class="task-card" style="margin:0 0 8px;cursor:default">
+        <div class="tc-body" style="padding:12px 16px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--safe-bg);display:flex;align-items:center;justify-content:center">👨</div>
+            <div style="flex:1">
+              <div style="font-size:14px;font-weight:600">张伟 <span style="font-size:11px;color:var(--text2)">医疗员</span></div>
+              <div style="font-size:12px;color:var(--text2)">红十字会 · 5年经验</div>
+            </div>
+            <span style="font-size:11px;color:var(--safe)">● 在岗</span>
+          </div>
+        </div>
+      </div>
+      <div class="task-card" style="margin:0 0 8px;cursor:default">
+        <div class="tc-body" style="padding:12px 16px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--warn-bg);display:flex;align-items:center;justify-content:center">👨</div>
+            <div style="flex:1">
+              <div style="font-size:14px;font-weight:600">王刚 <span style="font-size:11px;color:var(--text2)">驾驶员</span></div>
+              <div style="font-size:12px;color:var(--text2)">A2驾照 · 8年驾龄</div>
+            </div>
+            <span style="font-size:11px;color:var(--safe)">● 在岗</span>
+          </div>
+        </div>
+      </div>
+      <div class="task-card" style="margin:0 0 8px;cursor:default">
+        <div class="tc-body" style="padding:12px 16px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--primary-bg);display:flex;align-items:center;justify-content:center">👨</div>
+            <div style="flex:1">
+              <div style="font-size:14px;font-weight:600">刘洋 <span style="font-size:11px;color:var(--text2)">救援员</span></div>
+              <div style="font-size:12px;color:var(--text2)">民兵应急连 · 3年经验</div>
+            </div>
+            <span style="font-size:11px;color:var(--safe)">● 在岗</span>
+          </div>
+        </div>
+      </div>
+      <div class="task-card" style="margin:0;cursor:default">
+        <div class="tc-body" style="padding:12px 16px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--safe-bg);display:flex;align-items:center;justify-content:center">👨</div>
+            <div style="flex:1">
+              <div style="font-size:14px;font-weight:600">赵强 <span style="font-size:11px;color:var(--text2)">救援员</span></div>
+              <div style="font-size:12px;color:var(--text2)">民兵应急连 · 2年经验</div>
+            </div>
+            <span style="font-size:11px;color:var(--safe)">● 在岗</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="detail-section">
+    <div class="ds-title">🚗 车辆装备</div>
+    <div class="detail-row"><div class="dr-label">救护车</div><div class="dr-value">鄂A·E2026 · 担架2副·急救包3个</div></div>
+    <div class="detail-row"><div class="dr-label">物资车</div><div class="dr-value">鄂A·E2027 · 载重2吨</div></div>
+    <div class="detail-row"><div class="dr-label">对讲机</div><div class="dr-value">5部 · 频道CH-12</div></div>
+    <div class="detail-row"><div class="dr-label">卫星电话</div><div class="dr-value">1部 · 备用</div></div>
+  </div>
+</div>
+
+<!-- 底部导航 -->
+<div class="tabbar">
+  <div class="tabbar-item active" onclick="go('page-tasks')">
+    <div class="ti-icon">📋</div><div class="ti-label">任务</div>
+    <div class="badge">2</div>
+  </div>
+  <div class="tabbar-item" onclick="showModal('地图功能：显示所有任务位置点、实时路况、危险区域')">
+    <div class="ti-icon">🗺️</div><div class="ti-label">地图</div>
+  </div>
+  <div class="tabbar-item" onclick="go('page-team')">
+    <div class="ti-icon">🦺</div><div class="ti-label">队伍</div>
+  </div>
+  <div class="tabbar-item" onclick="showModal('消息中心\n\n· 09:15 指挥中心：新任务YJ-0312\n· 09:20 指挥中心：新任务YJ-0313\n· 09:25 系统：路线已更新\n· 09:30 指挥中心：注意安全')">
+    <div class="ti-icon">💬</div><div class="ti-label">消息</div>
+    <div class="badge">4</div>
+  </div>
+</div>
+
+<!-- 弹窗 -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="m-icon" id="modal-icon">ℹ️</div>
+    <h3 id="modal-title">提示</h3>
+    <p id="modal-text"></p>
+    <button class="m-btn m-btn-confirm" onclick="closeModal()">确定</button>
+  </div>
+</div>
+
+</div>
+</div>
+
+<script>
+function go(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  document.querySelector('.screen').scrollTop = 0;
+  document.querySelectorAll('.tabbar-item').forEach(t => t.classList.remove('active'));
+  const tabMap = {'page-tasks':0,'page-team':2};
+  if (tabMap[pageId] !== undefined) {
+    document.querySelectorAll('.tabbar-item')[tabMap[pageId]].classList.add('active');
+  }
+}
+
+function selectChip(el) {
+  const group = el.parentElement;
+  group.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function showModal(text, title) {
+  document.getElementById('modal-text').textContent = text;
+  document.getElementById('modal-title').textContent = title || '提示';
+  document.getElementById('modal-icon').textContent = title === '提交成功' || title === '出发成功' ? '✅' : 'ℹ️';
+  document.getElementById('modal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+}
+</script>
+</body>
+</html>

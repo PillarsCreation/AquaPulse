@@ -1,0 +1,402 @@
+app:
+  description: 灾后农业损失智能定损。结合八步模型链第④步淹没水深分布与无人机正射影像识别结果，自动估算种植业/养殖业损失区间，比对历史遥感数据预警异常高报，并一键生成可直连保险公司的灾损报告。
+  icon: 🌾
+  icon_background: '#DCFCE7'
+  mode: workflow
+  name: disaster-assessment
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.1.5
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+      - data:
+          isInIteration: false
+          sourceType: start
+          targetType: code
+        id: e1
+        source: s1
+        sourceHandle: source
+        target: c1
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          sourceType: code
+          targetType: knowledge-retrieval
+        id: e2
+        source: c1
+        sourceHandle: source
+        target: k1
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          sourceType: knowledge-retrieval
+          targetType: llm
+        id: e3
+        source: k1
+        sourceHandle: source
+        target: l1
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          sourceType: code
+          targetType: llm
+        id: e4
+        source: c1
+        sourceHandle: source
+        target: l1
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          sourceType: llm
+          targetType: end
+        id: e5
+        source: l1
+        sourceHandle: source
+        target: e1end
+        targetHandle: target
+        type: custom
+        zIndex: 0
+    nodes:
+      - data:
+          desc: 录入受灾户信息、淹没水深与无人机影像识别结果
+          selected: false
+          title: 开始·灾情录入
+          type: start
+          variables:
+            - label: 户主姓名
+              max_length: 48
+              options: []
+              required: true
+              type: text-input
+              variable: villager_name
+            - label: 所属村组
+              max_length: 48
+              options: []
+              required: true
+              type: text-input
+              variable: village
+            - label: 作物类型
+              options:
+                - 水稻
+                - 玉米
+                - 茶叶
+                - 蔬菜
+                - 果树
+              required: false
+              type: select
+              variable: crop_type
+            - label: 受灾面积（亩）
+              max_length: 48
+              options: []
+              required: false
+              type: number
+              variable: crop_area
+            - label: 淹没水深（米，来自八步模型第④步）
+              max_length: 48
+              options: []
+              required: true
+              type: number
+              variable: max_depth
+            - label: 无人机识别受淹比例 %
+              max_length: 48
+              options: []
+              required: false
+              type: number
+              variable: flood_ratio
+            - label: 养殖品类
+              max_length: 48
+              options: []
+              required: false
+              type: text-input
+              variable: livestock_type
+            - label: 存栏量
+              max_length: 48
+              options: []
+              required: false
+              type: number
+              variable: livestock_original
+            - label: 死亡/走失
+              max_length: 48
+              options: []
+              required: false
+              type: number
+              variable: livestock_dead
+            - label: 农户自报损失（元）
+              max_length: 48
+              options: []
+              required: false
+              type: number
+              variable: reported_loss
+        height: 240
+        id: s1
+        position:
+          x: 60
+          y: 240
+        positionAbsolute:
+          x: 60
+          y: 240
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+
+      - data:
+          code: |
+            def main(crop_type, crop_area, max_depth, flood_ratio, livestock_type,
+                     livestock_original, livestock_dead, reported_loss):
+                # 作物基准亩产值（元/亩），依据当地统计口径
+                BASE = {'水稻': 3200, '玉米': 2400, '茶叶': 5600, '蔬菜': 4800, '果树': 6200}
+                base = BASE.get(crop_type, 3000)
+                area = crop_area or 0
+                ratio = (flood_ratio if flood_ratio is not None else (100 if max_depth > 2 else 60)) / 100.0
+
+                # 水深折损系数：>2m 全损，1-2m 约 0.75，<1m 约 0.4
+                if max_depth > 2:
+                    coef = 0.95
+                elif max_depth > 1:
+                    coef = 0.75
+                else:
+                    coef = 0.40
+
+                crop_loss = round(base * area * min(ratio, 1.0) * coef, 2)
+
+                # 养殖损失按存栏死亡数 × 单位价值估算
+                UNIT = {'鸡': 45, '鸭': 55, '猪': 1800, '牛': 9000, '羊': 1200}
+                unit = UNIT.get(livestock_type, 50)
+                livestock_loss = round((livestock_dead or 0) * unit, 2)
+
+                total = crop_loss + livestock_loss
+
+                # 异常高报预警：自报值超出估算区间 40% 即标记复核
+                flag = 'normal'
+                if reported_loss and reported_loss > total * 1.4:
+                    flag = 'abnormal_high'
+                elif reported_loss and reported_loss < total * 0.6:
+                    flag = 'abnormal_low'
+
+                return {
+                    'crop_loss': crop_loss,
+                    'livestock_loss': livestock_loss,
+                    'total_loss': total,
+                    'audit_flag': flag,
+                    'std_query': f'{crop_type} 受灾定损标准 淹没水深{max_depth}米',
+                }
+          code_language: python3
+          desc: 结合淹没水深与无人机受淹比例估算损失区间，并标记异常高报
+          outputs:
+            crop_loss:
+              children: null
+              type: number
+            livestock_loss:
+              children: null
+              type: number
+            total_loss:
+              children: null
+              type: number
+            audit_flag:
+              children: null
+              type: string
+            std_query:
+              children: null
+              type: string
+          selected: false
+          title: AI 损失估算
+          type: code
+          variables:
+            - value_selector:
+                - s1
+                - crop_type
+              variable: crop_type
+            - value_selector:
+                - s1
+                - crop_area
+              variable: crop_area
+            - value_selector:
+                - s1
+                - max_depth
+              variable: max_depth
+            - value_selector:
+                - s1
+                - flood_ratio
+              variable: flood_ratio
+            - value_selector:
+                - s1
+                - livestock_type
+              variable: livestock_type
+            - value_selector:
+                - s1
+                - livestock_original
+              variable: livestock_original
+            - value_selector:
+                - s1
+                - livestock_dead
+              variable: livestock_dead
+            - value_selector:
+                - s1
+                - reported_loss
+              variable: reported_loss
+        height: 54
+        id: c1
+        position:
+          x: 380
+          y: 240
+        positionAbsolute:
+          x: 380
+          y: 240
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+
+      - data:
+          dataset_ids: []
+          desc: 检索官方定损标准与理赔口径，确保报告合规
+          query_variable_selector:
+            - c1
+            - std_query
+          retrieval_mode: single-route
+          selected: false
+          title: 定损标准检索（RAG）
+          type: knowledge-retrieval
+        height: 90
+        id: k1
+        position:
+          x: 380
+          y: 380
+        positionAbsolute:
+          x: 380
+          y: 380
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          desc: 生成可直连保险公司的标准化灾损报告
+          model:
+            completion_params:
+              temperature: 0.2
+              max_tokens: 1500
+            mode: chat
+            name: qwen-max
+            provider: tongyi
+          prompt_template:
+            - id: sys
+              role: system
+              text: |
+                你是农业灾情定损专员，为县级农业农村局与保险公司出具标准化灾损报告。
+
+                【铁律】
+                1. 只使用给定的估算数据与检索到的定损标准，严禁编造数值。
+                2. 报告须为政务正式用语，结构清晰，可直接归档与理赔。
+                3. 若 audit_flag 为 abnormal_high，必须在报告末尾单独给出「复核提示」，说明自报值与估算值的偏差。
+                4. 引用定损标准时标注 [引用：标准名称]。
+
+                【输出结构】
+                一、受灾户基本信息
+                二、种植业损失核定
+                三、养殖业损失核定
+                四、核定损失合计
+                五、定损依据（含水深来源：八步模型链第④步）
+                六、复核提示（若有）
+            - id: usr
+              role: user
+              text: |
+                【户主】{{#s1.villager_name#}}　【村组】{{#s1.village#}}
+                【作物】{{#s1.crop_type#}}　【受灾面积】{{#s1.crop_area#}} 亩
+                【淹没水深】{{#s1.max_depth#}} m　【无人机受淹比例】{{#s1.flood_ratio#}}%
+                【养殖】{{#s1.livestock_type#}}　存栏 {{#s1.livestock_original#}}　死亡走失 {{#s1.livestock_dead#}}
+                【AI 估算】作物损失 ¥{{#c1.crop_loss#}}　养殖损失 ¥{{#c1.livestock_loss#}}　合计 ¥{{#c1.total_loss#}}
+                【农户自报】¥{{#s1.reported_loss#}}　【异常标记】{{#c1.audit_flag#}}
+
+                【检索到的定损标准】
+                {{#k1.result#}}
+          selected: false
+          title: 灾损报告生成
+          type: llm
+          variables: []
+          vision:
+            enabled: false
+        height: 98
+        id: l1
+        position:
+          x: 700
+          y: 300
+        positionAbsolute:
+          x: 700
+          y: 300
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+
+      - data:
+          desc: 输出标准化灾损报告
+          outputs:
+            - value_selector:
+                - l1
+                - text
+              variable: report
+            - value_selector:
+                - c1
+                - total_loss
+              variable: total_loss
+            - value_selector:
+                - c1
+                - audit_flag
+              variable: audit_flag
+          selected: false
+          title: 结束
+          type: end
+        height: 90
+        id: e1end
+        position:
+          x: 1020
+          y: 300
+        positionAbsolute:
+          x: 1020
+          y: 300
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.7
+  rag_pipeline:
+    enabled: false

@@ -1,0 +1,213 @@
+app:
+  description: 面向基层防汛人员的应急预案问答助手。所有回答必须锚定《防汛应急预案汇编》《历史山洪灾情案例库》《山洪滑坡避险指引》原文，输出引用来源，杜绝大模型幻觉。
+  icon: 📚
+  icon_background: '#FEF3C7'
+  mode: advanced-chat
+  name: emergency-plan-rag
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.1.5
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: |
+      这里是防汛应急预案知识助手。
+
+      你可以问我：
+      · 橙色预警下如何组织老人转移？
+      · 安置点物资配置标准是什么？
+      · 断网时如何保障预警传递？
+      · 历史上类似的溃口案例有哪些教训？
+
+      所有回答都会标注引用的预案条款，可溯源核查。
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions:
+      - 山洪橙色预警下如何组织行动不便老人转移？
+      - 安置点需要配备哪些物资和医疗资源？
+      - 断网断电情况下怎样保障预警叫应？
+      - 2026 年广西 7·6 洪灾的主要教训是什么？
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+      - data:
+          isInIteration: false
+          sourceType: start
+          targetType: knowledge-retrieval
+        id: e1
+        source: s1
+        sourceHandle: source
+        target: k1
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          sourceType: knowledge-retrieval
+          targetType: llm
+        id: e2
+        source: k1
+        sourceHandle: source
+        target: l1
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          sourceType: llm
+          targetType: answer
+        id: e3
+        source: l1
+        sourceHandle: source
+        target: a1
+        targetHandle: target
+        type: custom
+        zIndex: 0
+    nodes:
+      - data:
+          desc: 输入应急场景问题
+          selected: false
+          title: 开始
+          type: start
+          variables:
+            - label: 问题
+              max_length: 256
+              options: []
+              required: true
+              type: paragraph
+              variable: query
+            - label: 当前预警等级
+              options:
+                - 蓝色
+                - 黄色
+                - 橙色
+                - 红色
+              required: false
+              type: select
+              variable: level
+        height: 116
+        id: s1
+        position:
+          x: 60
+          y: 260
+        positionAbsolute:
+          x: 60
+          y: 260
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+
+      - data:
+          dataset_ids: []
+          desc: 从应急预案知识库检索最相关的条款与案例
+          query_variable_selector:
+            - s1
+            - query
+          retrieval_mode: single-route
+          selected: false
+          title: 知识检索
+          type: knowledge-retrieval
+        height: 90
+        id: k1
+        position:
+          x: 380
+          y: 260
+        positionAbsolute:
+          x: 380
+          y: 260
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          desc: 基于检索结果生成可溯源的处置建议
+          model:
+            completion_params:
+              temperature: 0.1
+              max_tokens: 1200
+            mode: chat
+            name: qwen-max
+            provider: tongyi
+          prompt_template:
+            - id: sys
+              role: system
+              text: |
+                你是防汛应急知识助手，服务于基层防汛人员与村干部。
+
+                【铁律】
+                1. 只依据下方「检索到的预案片段」作答。若片段未覆盖，明确回答"预案库暂无相关规定，请联系县级防汛抗旱指挥部"，严禁编造。
+                2. 每条建议后必须用 [引用：来源条款] 标注出处。
+                3. 涉及人员生命安全时，优先给出可立即执行的具体动作，不要泛泛而谈。
+                4. 使用政务正式用语，禁用网络口语。
+                5. 若用户描述的情况存在即刻危险，在回答开头用一行红字提示："⚠ 请立即拨打 119/120 并组织撤离"。
+            - id: usr
+              role: user
+              text: |
+                【当前预警等级】{{#s1.level#}}
+                【问题】{{#s1.query#}}
+
+                【检索到的预案片段】
+                {{#k1.result#}}
+          selected: false
+          title: 预案问答生成
+          type: llm
+          variables: []
+          vision:
+            enabled: false
+        height: 98
+        id: l1
+        position:
+          x: 700
+          y: 260
+        positionAbsolute:
+          x: 700
+          y: 260
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+
+      - data:
+          answer: '{{#l1.text#}}'
+          desc: 输出可溯源的处置建议
+          selected: false
+          title: 回答
+          type: answer
+          variables: []
+        height: 105
+        id: a1
+        position:
+          x: 1020
+          y: 260
+        positionAbsolute:
+          x: 1020
+          y: 260
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.8
+  rag_pipeline:
+    enabled: false
